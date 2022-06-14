@@ -3,9 +3,13 @@ use std::mem::MaybeUninit;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::slice::{self, SliceIndex};
+
+use crate::alloc::{AllocatorBase, DefaultAllocator};
 use crate::raw_array::RawArray;
 
-pub struct Array<T: Sized + Unpin>(RawArray, PhantomData<T>);
+pub struct Array<T, A = DefaultAllocator>(RawArray<A>, PhantomData<T>) where
+    T: Sized + Unpin,
+    A: AllocatorBase;
 
 impl<T: Sized + Unpin> Array<T> {
     #[inline]
@@ -17,7 +21,27 @@ impl<T: Sized + Unpin> Array<T> {
     pub fn with_capacity(capacity: usize) -> Self {
         Array(RawArray::for_type_with_capacity::<T>(capacity), PhantomData)
     }
+}
 
+impl<T, A> Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase
+{
+    #[inline]
+    pub fn custom_allocator() -> Self {
+        Array(RawArray::<A>::for_type::<T>(), PhantomData)
+    }
+
+    #[inline]
+    pub fn custom_allocator_with_capacity(capacity: usize) -> Self {
+        Array(RawArray::<A>::for_type_with_capacity::<T>(capacity), PhantomData)
+    }
+}
+
+impl<T, A> Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase
+{
     #[inline]
     pub fn capacity(&self) -> usize {
         self.0.capacity()
@@ -132,7 +156,10 @@ impl<T: Sized + Unpin> Array<T> {
     }
 }
 
-impl<T: Sized + Unpin> Deref for Array<T> {
+impl<T, A> Deref for Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase
+{
     type Target = [T];
 
     fn deref(&self) -> &[T] {
@@ -140,13 +167,20 @@ impl<T: Sized + Unpin> Deref for Array<T> {
     }
 }
 
-impl<T: Sized + Unpin> DerefMut for Array<T> {
+impl<T, A> DerefMut for Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase
+{
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.num()) }
     }
 }
 
-impl<T: Sized + Unpin, I: SliceIndex<[T]>> Index<I> for Array<T> {
+impl<T, A, I> Index<I> for Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase,
+    I: SliceIndex<[T]>
+{
     type Output = I::Output;
 
     #[inline]
@@ -155,14 +189,21 @@ impl<T: Sized + Unpin, I: SliceIndex<[T]>> Index<I> for Array<T> {
     }
 }
 
-impl<T: Sized + Unpin, I: SliceIndex<[T]>> IndexMut<I> for Array<T> {
+impl<T, A, I> IndexMut<I> for Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase,
+    I: SliceIndex<[T]>
+{
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 
-impl<'a, T: Sized + Unpin> IntoIterator for &'a Array<T> {
+impl<'a, T, A> IntoIterator for &'a Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase
+{
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -171,7 +212,10 @@ impl<'a, T: Sized + Unpin> IntoIterator for &'a Array<T> {
     }
 }
 
-impl<'a, T: Sized + Unpin> IntoIterator for &'a mut Array<T> {
+impl<'a, T, A> IntoIterator for &'a mut Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase
+{
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
@@ -180,7 +224,10 @@ impl<'a, T: Sized + Unpin> IntoIterator for &'a mut Array<T> {
     }
 }
 
-impl<T: Sized + Unpin> Drop for Array<T> {
+impl<T, A> Drop for Array<T, A> where
+    T: Sized + Unpin,
+    A: AllocatorBase
+{
     fn drop(&mut self) {
         unsafe {
             ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.num()));
@@ -188,7 +235,8 @@ impl<T: Sized + Unpin> Drop for Array<T> {
     }
 }
 
-impl<T: Sized + Unpin> Default for Array<T> {
+impl<T: Sized + Unpin> Default for Array<T>
+{
     fn default() -> Array<T> {
         Array::new()
     }

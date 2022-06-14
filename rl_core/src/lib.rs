@@ -1,5 +1,6 @@
 mod raw_array;
 
+pub mod alloc;
 pub mod array;
 
 #[cfg(test)]
@@ -13,7 +14,7 @@ mod tests {
         array.push_front(1);
         array.push_back(3);
         assert_eq!(array.num(), 3);
-        assert_eq!(array.capacity(), 3);
+        assert_eq!(array.capacity(), 4);
         assert_eq!(array[0], 1);
         assert_eq!(array[1], 2);
         assert_eq!(array[2], 3);

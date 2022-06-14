@@ -3,40 +3,9 @@ use std::marker::PhantomData;
 use std::mem::{size_of, align_of};
 use std::vec::{Vec};
 use std::time::{Duration, Instant};
+use rl_core::alloc::InlineAllocator;
 use rl_core::array::Array;
-
-use std::alloc::Layout;
-
-trait AllocatorBase {
-    unsafe fn alloc(&mut self, layout: Layout) -> *mut u8;
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout);
-}
-
-trait ArrayAllocator<T> : AllocatorBase { }
-
-struct InlineAllocator<const N: usize, T> {
-    inline_data: std::mem::ManuallyDrop<[T; N]>,
-}
-
-impl<const N: usize, T> AllocatorBase for InlineAllocator<N, T> {
-    unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        let inline_data_size = std::mem::size_of::<[T; N]>();
-        if layout.size() <= inline_data_size {
-            self.inline_data.as_mut_ptr().cast::<u8>()
-        } else {
-            std::alloc::alloc(layout)
-        }
-    }
-
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        if ptr.cast::<T>() != self.inline_data.as_mut_ptr() {
-            std::alloc::dealloc(ptr, layout);
-        }
-    }
-}
-
-impl<const N: usize, T> ArrayAllocator<T> for InlineAllocator<N, T> { }
-
+/*
 struct MockRawArray<A : AllocatorBase> {
     alloc: A,
 }
@@ -46,7 +15,7 @@ struct MockArray<T, A: ArrayAllocator<T>>(MockRawArray<A>, PhantomData<T>);
 struct MockArrayContainer {
     field: MockArray<i32, InlineAllocator<5, i32>>,
 }
-
+*/
 #[derive(Debug)]
 struct TypeInfo {
     id: TypeId,
@@ -200,9 +169,15 @@ fn main() {
     println!("AfterClear");
     drop(array);
 
-    let tmp = TestStruct2("asdasd");
+    println!("TestStruct2 size: {}", std::mem::size_of::<TestStruct2>());
+    let mut inline_array: Array<TestStruct2, InlineAllocator<4, TestStruct2>> = Array::custom_allocator();
+    inline_array.push_back(TestStruct2("One"));
+    inline_array.push_back(TestStruct2("Two"));
+    inline_array.push_back(TestStruct2("Three"));
+    inline_array.push_back(TestStruct2("Four"));
+    //inline_array.push_back(TestStruct2("Five"));
 
     // call to find them in asm
-    use_array();
-    use_vec();
+    //use_array();
+    //use_vec();
 }
