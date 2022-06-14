@@ -20,11 +20,18 @@ struct InlineAllocator<const N: usize, T> {
 
 impl<const N: usize, T> AllocatorBase for InlineAllocator<N, T> {
     unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
-        self.inline_data.as_mut_ptr().cast::<u8>()
+        let inline_data_size = std::mem::size_of::<[T; N]>();
+        if layout.size() <= inline_data_size {
+            self.inline_data.as_mut_ptr().cast::<u8>()
+        } else {
+            std::alloc::alloc(layout)
+        }
     }
 
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-
+        if ptr.cast::<T>() != self.inline_data.as_mut_ptr() {
+            std::alloc::dealloc(ptr, layout);
+        }
     }
 }
 
