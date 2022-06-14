@@ -15,7 +15,7 @@ trait AllocatorBase {
 trait ArrayAllocator<T> : AllocatorBase { }
 
 struct InlineAllocator<const N: usize, T> {
-    inline_data: [T; N],
+    inline_data: std::mem::ManuallyDrop<[T; N]>,
 }
 
 impl<const N: usize, T> AllocatorBase for InlineAllocator<N, T> {
