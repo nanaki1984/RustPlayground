@@ -178,6 +178,6 @@ fn main() {
     //inline_array.push_back(TestStruct2("Five"));
 
     // call to find them in asm
-    //use_array();
-    //use_vec();
+    use_array();
+    use_vec();
 }

@@ -5,7 +5,7 @@ pub mod array;
 
 #[cfg(test)]
 mod tests {
-    use crate::array::Array;
+    use crate::{array::Array, alloc::InlineAllocator};
 
     #[test]
     fn it_works() {
@@ -38,5 +38,9 @@ mod tests {
         assert!(!array.is_empty());
         array.clear();
         assert!(array.is_empty());
+
+        const inline_test_size: usize = 4;
+        let mut inline_array: Array<i32, InlineAllocator<inline_test_size, i32>> = Array::custom_allocator();
+        assert_eq!(std::mem::size_of_val(&inline_array), std::mem::size_of_val(&array) + std::mem::size_of::<i32>() * inline_test_size);
     }
 }
