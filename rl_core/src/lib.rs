@@ -1,4 +1,7 @@
+pub mod fast_hash;
+
 mod raw_array;
+mod raw_set;
 
 pub mod alloc;
 pub mod array;
