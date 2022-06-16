@@ -1,6 +1,7 @@
 use std::cmp::{max};
 use std::alloc::{Layout};
 use std::ptr::{self, NonNull};
+use std::ops::Range;
 
 use crate::alloc::AllocatorBase;
 
@@ -130,9 +131,6 @@ impl<A: AllocatorBase> RawArray<A> {
     pub unsafe fn allocate_front<F>(&mut self, ctor: F)
         where F: FnOnce(*mut u8)
     {
-        //if self.items_num == self.items_cap {
-        //    self.set_capacity(1 + self.items_cap * 2);
-        //}
         self.grow_if_needed(self.items_num + 1);
 
         let single_item_size = self.items_layout.size();
@@ -149,9 +147,6 @@ impl<A: AllocatorBase> RawArray<A> {
     pub unsafe fn allocate_back<F>(&mut self, ctor: F)
         where F: FnOnce(*mut u8)
     {
-        //if self.items_num == self.items_cap {
-        //    self.set_capacity(1 + self.items_cap * 2);
-        //}
         self.grow_if_needed(self.items_num + 1);
 
         ctor(self.data
@@ -166,9 +161,6 @@ impl<A: AllocatorBase> RawArray<A> {
     {
         debug_assert!(index <= self.items_num);
 
-        //if self.items_num == self.items_cap {
-        //    self.set_capacity(1 + self.items_cap * 2);
-        //}
         self.grow_if_needed(self.items_num + 1);
 
         if index == 0 {
@@ -188,6 +180,30 @@ impl<A: AllocatorBase> RawArray<A> {
 
             self.items_num += 1;
         }
+    }
+
+    pub unsafe fn allocate_range<F>(&mut self, range: Range<usize>, ctor: F)
+        where F: Fn(*mut u8)
+    {
+        debug_assert!(range.start <= self.items_num && range.end > range.start);
+
+        let range_size = range.end - range.start;
+        self.grow_if_needed(self.items_num + range_size);
+
+        let single_item_size = self.items_layout.size();
+        let start_ptr = self.data.as_ptr().add(range.start * single_item_size);
+        if range.start < self.items_num {
+            ptr::copy(
+                start_ptr,
+                start_ptr.add(range_size * single_item_size),
+                (self.items_num - range.start) * single_item_size);    
+        }
+
+        for i in 0..range_size {
+            ctor(start_ptr.add(i * single_item_size));
+        }
+
+        self.items_num += range_size;
     }
 
     pub unsafe fn swap_remove<F>(&mut self, index: usize, dtor: F)

@@ -1,7 +1,7 @@
 use std::ptr::{self};
 use std::mem::MaybeUninit;
 use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut, Index, IndexMut};
+use std::ops::{Range, Deref, DerefMut, Index, IndexMut};
 use std::slice::{self, SliceIndex};
 
 use crate::alloc::{AllocatorBase, DefaultAllocator};
@@ -115,6 +115,15 @@ impl<T, A> Array<T, A> where
     }
 
     #[inline]
+    pub fn insert_range(&mut self, range: Range<usize>, value: T) where T : Clone {
+        unsafe {
+            self.0.allocate_range(range, |ptr| {
+                ptr::write(ptr.cast::<T>(), value.clone());
+            });
+        }
+    }
+
+    #[inline]
     pub fn swap_remove(&mut self, index: usize) -> T {
         let mut tmp = MaybeUninit::<T>::uninit();
         unsafe {
@@ -143,7 +152,7 @@ impl<T, A> Array<T, A> where
 
     #[inline]
     pub fn pop_back(&mut self) -> T {
-        self.remove(self.num() - 1)
+        self.swap_remove(self.num() - 1)
     }
 
     #[inline]

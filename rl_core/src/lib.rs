@@ -42,6 +42,19 @@ mod tests {
         array.clear();
         assert!(array.is_empty());
 
+        array.insert_range(0..10, 0);
+        assert_eq!(array.num(), 10);
+        for i in 0..10 {
+            assert_eq!(array[i], 0);
+        }
+        array.insert_range(1..3, 1);
+        assert_eq!(array[0], 0);
+        assert_eq!(array[1], 1);
+        assert_eq!(array[2], 1);
+        assert_eq!(array[3], 0);
+        array.insert_range(array.num()..20, 2);
+        assert_eq!(array[19], 2);
+
         const inline_test_size: usize = 4;
         let mut inline_array: Array<i32, InlineAllocator<inline_test_size, i32>> = Array::custom_allocator();
         assert_eq!(std::mem::size_of_val(&inline_array), std::mem::size_of_val(&array) + std::mem::size_of::<i32>() * inline_test_size);
