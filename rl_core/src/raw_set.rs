@@ -98,7 +98,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
 
     #[inline]
     fn grow_table(&mut self) {
-        self.rehash_with_table_size(self.table.num() * 2 + 8);
+        self.rehash(self.table.num() * 2 + 8);
     }
 
     #[inline]
@@ -127,12 +127,12 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         }
     }
 
-    pub fn rehash_with_table_size(&mut self, table_size: usize) {
-        debug_assert!(table_size > 0);
+    pub fn rehash(&mut self, new_table_size: usize) {
+        debug_assert!(new_table_size > 0);
 
         self.table.clear();
-        self.table.set_capacity(table_size);
-        self.table.insert_range(0..table_size, usize::MAX);
+        self.table.set_capacity(new_table_size);
+        self.table.insert_range(0..new_table_size, usize::MAX);
 
         for entry in &mut self.entries {
             entry.prev = usize::MAX;
@@ -146,12 +146,6 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
             self.entries[index] = new_entry;
         }
     }
-
-    //#[inline]
-    //pub fn rehash(&mut self) {
-    //    self.rehash_with_table_size(self.table.num());
-    //}
-    // Rehash is needed only if keys are changed
 
     pub fn insert_data<F>(&mut self, key: Key, ctor: F) -> usize
         where F: FnOnce(*mut u8)
@@ -226,7 +220,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
             self.entries[moved_entry_copy.prev].next = index;
         }
 
-        if moved_entry_copy.prev != usize::MAX {
+        if moved_entry_copy.next != usize::MAX {
             self.entries[moved_entry_copy.next].prev = index;
         }
     }
@@ -265,17 +259,6 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
     #[inline]
     pub fn num(&self) -> usize {
         self.entries.num()
-    }
-
-    #[inline]
-    pub fn num_with_key(&self, key: Key) -> usize {
-        let mut counter = 0usize;
-        let mut entry_index = self.find_first_index(key);
-        while entry_index != usize::MAX {
-            counter += 1;
-            entry_index = self.find_next_index(entry_index);
-        }
-        counter
     }
 
     #[inline]

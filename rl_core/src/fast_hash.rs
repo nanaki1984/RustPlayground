@@ -34,6 +34,8 @@ impl SetKey for i64 { }
 impl SetKey for u64 { }
 
 pub trait SetItem : Sized + Unpin {
+    const IMMUTABLE_KEY: bool;
+
     type KeyType : SetKey;
 
     fn get_key(&self) -> Self::KeyType;
@@ -42,6 +44,8 @@ pub trait SetItem : Sized + Unpin {
 pub struct KeyValuePair<K: SetKey, V: Unpin>(K, V);
 
 impl<K: SetKey, V: Unpin> SetItem for KeyValuePair<K, V> {
+    const IMMUTABLE_KEY: bool = true;
+
     type KeyType = K;
 
     fn get_key(&self) -> Self::KeyType {
