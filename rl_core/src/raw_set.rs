@@ -1,5 +1,4 @@
 use std::alloc::Layout;
-//use std::option::{Option};
 
 use crate::fast_hash::SetKey;
 use crate::alloc::AllocatorBase;
@@ -8,31 +7,32 @@ use crate::raw_array::RawArray;
 use crate::array::Array;
 
 #[derive(Copy, Clone)]
-struct SetEntry<K: SetKey> {
+pub struct RawSetEntry<K: SetKey> {
     key: K,
     index: usize,
     prev: usize,
     next: usize,
 }
 
-struct RawSet<Key, DataAlloc, EntriesAlloc, TableAlloc> where
+pub(crate) struct RawSet<Key, DataAlloc, EntriesAlloc, TableAlloc> where
     Key: SetKey,
     DataAlloc: AllocatorBase,
-    EntriesAlloc: ArrayAllocator<SetEntry<Key>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry<Key>>,
     TableAlloc: ArrayAllocator<usize>
 {
     data: RawArray<DataAlloc>,
-    entries: Array<SetEntry<Key>, EntriesAlloc>,
+    entries: Array<RawSetEntry<Key>, EntriesAlloc>,
     table: Array<usize, TableAlloc>,
 }
 
 impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAlloc, TableAlloc> where
     Key: SetKey,
     DataAlloc: AllocatorBase,
-    EntriesAlloc: ArrayAllocator<SetEntry<Key>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry<Key>>,
     TableAlloc: ArrayAllocator<usize>
 {
-    pub(crate) unsafe fn for_type_unchecked(layout: Layout) -> Self {
+    #[inline]
+    pub unsafe fn for_type_unchecked(layout: Layout) -> Self {
         Self {
             data: RawArray::<DataAlloc>::for_type_unchecked(layout),
             entries: Array::custom_allocator(),
@@ -40,11 +40,29 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         }
     }
 
-    //pub(crate) fn with_table_size(table_size: usize) -> Self {
-    //}
+    #[inline]
+    pub unsafe fn for_type_with_table_size_unchecked(layout: Layout, table_size: usize) -> Self {
+        let mut raw_set = Self {
+            data: RawArray::<DataAlloc>::for_type_unchecked(layout),
+            entries: Array::custom_allocator(),
+            table: Array::custom_allocator_with_capacity(table_size)
+        };
+        raw_set.table.insert_range(0..table_size, usize::MAX);
+        raw_set
+    }
 
     #[inline]
-    fn find_first_entry_index(&self, key: Key) -> usize {
+    pub fn for_type<T: Sized>() -> Self {
+        unsafe{ Self::for_type_unchecked(Layout::new::<T>()) }
+    }
+
+    #[inline]
+    pub fn for_type_with_table_size<T: Sized>(table_size: usize) -> Self {
+        unsafe{ Self::for_type_with_table_size_unchecked(Layout::new::<T>(), table_size) }
+    }
+
+    #[inline]
+    pub fn find_first_index(&self, key: Key) -> usize {
         let mut entry_index = usize::MAX;
 
         if !self.table.is_empty() {
@@ -59,7 +77,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
     }
 
     #[inline]
-    fn find_next_entry_index(&self, entry_index: usize) -> usize {
+    fn find_next_index(&self, entry_index: usize) -> usize {
         debug_assert!(entry_index != usize::MAX);
 
         let entry = &self.entries[entry_index];
@@ -80,14 +98,14 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
 
     #[inline]
     fn grow_table(&mut self) {
-        self.rehash(self.table.num() * 2 + 8);
+        self.rehash_with_table_size(self.table.num() * 2 + 8);
     }
 
     #[inline]
-    fn setup_new_entry(&mut self, new_entry: &mut SetEntry<Key>) {
+    fn setup_new_entry(&mut self, new_entry: &mut RawSetEntry<Key>) {
         let table_index = new_entry.key.fast_hash() % self.table.num();
 
-        new_entry.next = self.find_first_entry_index(new_entry.key);
+        new_entry.next = self.find_first_index(new_entry.key);
         if new_entry.next == usize::MAX {
             new_entry.next = self.table[table_index];
         }
@@ -109,7 +127,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         }
     }
 
-    pub fn rehash(&mut self, table_size: usize) {
+    pub fn rehash_with_table_size(&mut self, table_size: usize) {
         debug_assert!(table_size > 0);
 
         self.table.clear();
@@ -129,7 +147,12 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         }
     }
 
-    fn insert_data<F>(&mut self, key: Key, ctor: F) -> usize
+    #[inline]
+    pub fn rehash(&mut self) {
+        self.rehash_with_table_size(self.table.num());
+    }
+
+    pub fn insert_data<F>(&mut self, key: Key, ctor: F) -> usize
         where F: FnOnce(*mut u8)
     {
         if self.table_is_full() {
@@ -137,7 +160,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         }
 
         let new_entry_index = self.entries.num();
-        let mut new_entry = SetEntry {
+        let mut new_entry = RawSetEntry {
             key,
             index: new_entry_index,
             prev: usize::MAX,
@@ -205,5 +228,67 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         if moved_entry_copy.prev != usize::MAX {
             self.entries[moved_entry_copy.next].prev = index;
         }
+    }
+
+    pub unsafe fn clear<F>(&mut self, slice_dtor: F)
+        where F: FnOnce(*mut u8, usize)
+    {
+        self.data.clear(slice_dtor);
+
+        self.entries.clear();
+
+        for index in &mut self.table {
+            *index = usize::MAX;
+        }
+    }
+
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.entries.capacity()
+    }
+
+    #[inline]
+    pub fn set_capacity(&mut self, capacity: usize) {
+        self.entries.set_capacity(capacity);
+        self.data.set_capacity(capacity);
+    }
+
+    #[inline]
+    pub fn reserve(&mut self, additional: usize) {
+        let wanted_capacity = self.entries.num() + additional;
+        if wanted_capacity > self.capacity() {
+            self.set_capacity(wanted_capacity);
+        }
+    }
+
+    #[inline]
+    pub fn num(&self) -> usize {
+        self.entries.num()
+    }
+
+    #[inline]
+    pub fn num_with_key(&self, key: Key) -> usize {
+        let mut counter = 0usize;
+        let mut entry_index = self.find_first_index(key);
+        while entry_index != usize::MAX {
+            counter += 1;
+            entry_index = self.find_next_index(entry_index);
+        }
+        counter
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    #[inline]
+    pub fn as_ptr(&self) -> *const u8 {
+        self.data.as_ptr()
+    }
+
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.data.as_mut_ptr()
     }
 }
