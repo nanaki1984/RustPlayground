@@ -1,9 +1,9 @@
-use crate::fast_hash::{FastHash, SetKey, SetItem};
+use crate::fast_hash::SetItem;
 use crate::{array::Array, set::Set, alloc::InlineAllocator};
 
 #[test]
 fn set_test() {
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     struct SetNumber(i32);
     impl SetItem for SetNumber {
         type KeyType = i32;
@@ -15,6 +15,10 @@ fn set_test() {
     impl SetNumber {
         fn new(n: i32) -> Self {
             Self(n)
+        }
+
+        fn get_num(&self) -> i32 {
+            self.0
         }
     }
 
@@ -36,11 +40,14 @@ fn set_test() {
     assert_eq!(set.num_with_key(20), 1);
     assert_eq!(set.num_with_key(25), 1);
     assert_eq!(set.num(), 6);
-    assert_eq!(set.find_first(20), 0);
-    assert_eq!(set.find_next(0), usize::MAX);
-    assert_eq!(set.find_first(10), 2);
-    assert_eq!(set.find_next(2), 1);
-    assert_eq!(set.find_next(1), usize::MAX);
+    let elem20 = set.find_first(20).unwrap();
+    assert_eq!(elem20.get_num(), 20);
+    assert_eq!(set.find_next(elem20), Option::None);
+    let mut elem10 = set.find_first(10).unwrap();
+    assert_eq!(elem10.get_num(), 10);
+    elem10 = set.find_next(elem10).unwrap();
+    assert_eq!(elem10.get_num(), 10);
+    assert_eq!(set.find_next(elem10), Option::None);
     set.clear();
     assert_eq!(set.num(), 0);
 }

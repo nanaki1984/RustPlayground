@@ -292,4 +292,9 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self.data.as_mut_ptr()
     }
+
+    #[inline]
+    pub fn get_key(&self, index: usize) -> Key {
+        self.entries[index].key
+    }
 }

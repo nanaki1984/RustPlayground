@@ -3,6 +3,7 @@ use std::mem::MaybeUninit;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::slice::{self, SliceIndex};
+use std::option::Option;
 
 use crate::alloc::{ArrayAllocator, DefaultAllocator};
 use crate::fast_hash::SetItem;
@@ -135,14 +136,58 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
         }
     }
 
-    #[inline]
-    pub fn find_first(&self, key: T::KeyType) -> usize {
-        self.0.find_first_index(key)
+    pub fn find_first<'a>(&'a self, key: T::KeyType) -> Option<&'a T> {
+        let mut first_elem_index = self.0.find_first_index(key);
+        while first_elem_index != usize::MAX {
+            if self[first_elem_index].get_key() == key {
+                return Option::Some(&self[first_elem_index]);
+            }
+            first_elem_index = self.0.find_next_index(first_elem_index);
+        }
+        Option::None
     }
 
-    #[inline]
-    pub fn find_next(&self, index: usize) -> usize {
-        self.0.find_next_index(index)
+    pub fn find_first_mut<'a>(&'a mut self, key: T::KeyType) -> Option<&'a mut T> {
+        let mut first_elem_index = self.0.find_first_index(key);
+        while first_elem_index != usize::MAX {
+            if self[first_elem_index].get_key() == key {
+                return Option::Some(&mut self[first_elem_index]);
+            }
+            first_elem_index = self.0.find_next_index(first_elem_index);
+        }
+        Option::None
+    }
+
+    pub fn find_next<'a>(&'a self, current: &'a T) -> Option<&'a T> {
+        let current_key = current.get_key();
+        let elem_ptr = current as *const T;
+        let elem_idx = unsafe{ elem_ptr.offset_from(self.as_ptr()) };
+        if elem_idx >= 0 && elem_idx < self.num().try_into().unwrap() {
+            let mut next_elem_idx = self.0.find_next_index(elem_idx as usize);
+            while next_elem_idx != usize::MAX {
+                if self[next_elem_idx].get_key() == current_key {
+                    return Option::Some(&self[next_elem_idx]);
+                }
+                next_elem_idx = self.0.find_next_index(next_elem_idx);
+            }
+        }
+        Option::None
+    }
+
+    pub fn find_next_mut<'a>(&'a mut self, current: &'a mut T) -> Option<&'a mut T> {
+        let current_key = current.get_key();
+        let elem_ptr = current as *mut T;
+        let elem_idx = unsafe{ elem_ptr.offset_from(self.as_mut_ptr()) };
+        if elem_idx >= 0 && elem_idx < self.num().try_into().unwrap() {
+            let mut next_elem_idx = self.0.find_next_index(elem_idx as usize);
+            while next_elem_idx != usize::MAX {
+                if self[next_elem_idx].get_key() == current_key {
+                    return Option::Some(&mut self[next_elem_idx]);
+                }
+                next_elem_idx = self.0.find_next_index(next_elem_idx);
+            }
+        }
+        Option::None
     }
 }
 

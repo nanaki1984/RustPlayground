@@ -1,4 +1,5 @@
 use std::any::{TypeId, type_name};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::mem::{size_of, align_of};
 use std::vec::{Vec};
