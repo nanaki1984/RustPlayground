@@ -8,7 +8,7 @@ use crate::array::Array;
 
 #[derive(Copy, Clone)]
 pub struct RawSetEntry<K: SetKey> {
-    key: K,
+    cached_key: K,
     index: usize,
     prev: usize,
     next: usize,
@@ -68,7 +68,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         if !self.table.is_empty() {
             let table_index = key.fast_hash() % self.table.num();
             entry_index = self.table[table_index];
-            while entry_index != usize::MAX && self.entries[entry_index].key != key {
+            while entry_index != usize::MAX && self.entries[entry_index].cached_key != key {
                 entry_index = self.entries[entry_index].next;
             }
         }
@@ -83,7 +83,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         let entry = &self.entries[entry_index];
         let next_entry_index = entry.next;
 
-        if next_entry_index == usize::MAX || self.entries[next_entry_index].key != entry.key {
+        if next_entry_index == usize::MAX || self.entries[next_entry_index].cached_key != entry.cached_key {
             return usize::MAX;
         }
 
@@ -103,9 +103,9 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
 
     #[inline]
     fn setup_new_entry(&mut self, new_entry: &mut RawSetEntry<Key>) {
-        let table_index = new_entry.key.fast_hash() % self.table.num();
+        let table_index = new_entry.cached_key.fast_hash() % self.table.num();
 
-        new_entry.next = self.find_first_index(new_entry.key);
+        new_entry.next = self.find_first_index(new_entry.cached_key);
         if new_entry.next == usize::MAX {
             new_entry.next = self.table[table_index];
         }
@@ -162,7 +162,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
 
         let new_entry_index = self.entries.num();
         let mut new_entry = RawSetEntry {
-            key,
+            cached_key: key,
             index: new_entry_index,
             prev: usize::MAX,
             next: usize::MAX
@@ -198,7 +198,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
 
         // Fix prev & next indices after removing removed_entry
         if removed_entry.prev == usize::MAX {
-            let table_index = removed_entry.key.fast_hash() % self.table.num();
+            let table_index = removed_entry.cached_key.fast_hash() % self.table.num();
             self.table[table_index] = removed_entry.next;
         } else {
             self.entries[removed_entry.prev].next = removed_entry.next;
@@ -220,7 +220,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         let moved_entry_copy = self.entries[index];
 
         if moved_entry_copy.prev == usize::MAX {
-            let table_index = moved_entry_copy.key.fast_hash() % self.table.num();
+            let table_index = moved_entry_copy.cached_key.fast_hash() % self.table.num();
             self.table[table_index] = index;
         } else {
             self.entries[moved_entry_copy.prev].next = index;
@@ -294,7 +294,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
     }
 
     #[inline]
-    pub fn get_key(&self, index: usize) -> Key {
-        self.entries[index].key
+    pub fn get_cached_key(&self, index: usize) -> Key {
+        self.entries[index].cached_key
     }
 }
