@@ -1,8 +1,37 @@
-pub trait FashHash {
+pub trait FastHash {
     fn fast_hash(&self) -> usize;
 }
 
-pub trait SetKey : Copy + Eq + Unpin + FashHash { }
+pub trait SetKey : Copy + Eq + Unpin + FastHash { }
+
+impl FastHash for i32 {
+    fn fast_hash(&self) -> usize {
+        *self as usize
+    }
+}
+
+impl FastHash for u32 {
+    fn fast_hash(&self) -> usize {
+        *self as usize
+    }
+}
+
+impl FastHash for i64 {
+    fn fast_hash(&self) -> usize {
+        *self as usize
+    }
+}
+
+impl FastHash for u64 {
+    fn fast_hash(&self) -> usize {
+        *self as usize
+    }
+}
+
+impl SetKey for i32 { }
+impl SetKey for u32 { }
+impl SetKey for i64 { }
+impl SetKey for u64 { }
 
 pub trait SetItem : Sized + Unpin {
     type KeyType : SetKey;

@@ -77,7 +77,7 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
     }
 
     #[inline]
-    fn find_next_index(&self, entry_index: usize) -> usize {
+    pub fn find_next_index(&self, entry_index: usize) -> usize {
         debug_assert!(entry_index != usize::MAX);
 
         let entry = &self.entries[entry_index];
@@ -147,10 +147,11 @@ impl<Key,DataAlloc, EntriesAlloc, TableAlloc> RawSet<Key, DataAlloc, EntriesAllo
         }
     }
 
-    #[inline]
-    pub fn rehash(&mut self) {
-        self.rehash_with_table_size(self.table.num());
-    }
+    //#[inline]
+    //pub fn rehash(&mut self) {
+    //    self.rehash_with_table_size(self.table.num());
+    //}
+    // Rehash is needed only if keys are changed
 
     pub fn insert_data<F>(&mut self, key: Key, ctor: F) -> usize
         where F: FnOnce(*mut u8)

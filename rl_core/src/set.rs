@@ -107,11 +107,6 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
     }
 
     #[inline]
-    pub fn rehash(&mut self) {
-        self.0.rehash();
-    }
-
-    #[inline]
     pub fn insert(&mut self, value: T) {
         unsafe {
             self.0.insert_data(value.get_key(), |ptr| {
@@ -138,6 +133,16 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
                 ptr::drop_in_place(ptr::slice_from_raw_parts_mut(ptr.cast::<T>(), num));
             });
         }
+    }
+
+    #[inline]
+    pub fn find_first(&self, key: T::KeyType) -> usize {
+        self.0.find_first_index(key)
+    }
+
+    #[inline]
+    pub fn find_next(&self, index: usize) -> usize {
+        self.0.find_next_index(index)
     }
 }
 
