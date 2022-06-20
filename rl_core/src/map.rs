@@ -79,13 +79,6 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
         } else {
             Option::Some(self.0[existing_pair_index].swap_value(value))
         }
-        //let mut ret = Option::None;
-        //if let Some(pair) = self.0.find_first_mut(key) {
-        //    ret = Option::Some(pair.swap_value(value));
-        //} else {
-        //    self.0.insert(KeyValuePair::new(key, value));
-        //}
-        //ret
     }
 
     #[inline]
@@ -106,11 +99,6 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
         } else {
             Option::Some(self.0[pair_index].get_value())
         }
-        //if let Some(pair) = self.0.find_first(key) {
-        //    Option::Some(pair.get_value())
-        //} else {
-        //    Option::None
-        //}
     }
 
     #[inline]
@@ -121,11 +109,6 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
         } else {
             Option::Some(self.0[existing_pair_index].get_value_mut())
         }
-        //if let Some(pair) = self.0.find_first_mut(key) {
-        //    Option::Some(pair.get_value_mut())
-        //} else {
-        //    Option::None
-        //}
     }
 
     #[inline]
