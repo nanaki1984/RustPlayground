@@ -67,18 +67,25 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
 
     #[inline]
     pub fn contains(&self, key: K) -> bool {
-        self.0.find_first(key).is_some()
+        self.0.find_first_index(key) != usize::MAX
     }
 
     #[inline]
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        let mut ret = Option::None;
-        if let Some(pair) = self.0.find_first_mut(key) {
-            ret = Option::Some(pair.swap_value(value));
-        } else {
+        let existing_pair_index = self.0.find_first_index(key);
+        if existing_pair_index == usize::MAX {
             self.0.insert(KeyValuePair::new(key, value));
+            Option::None
+        } else {
+            Option::Some(self.0[existing_pair_index].swap_value(value))
         }
-        ret
+        //let mut ret = Option::None;
+        //if let Some(pair) = self.0.find_first_mut(key) {
+        //    ret = Option::Some(pair.swap_value(value));
+        //} else {
+        //    self.0.insert(KeyValuePair::new(key, value));
+        //}
+        //ret
     }
 
     #[inline]
@@ -93,20 +100,32 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
 
     #[inline]
     pub fn get(&self, key: K) -> Option<&V> {
-        if let Some(pair) = self.0.find_first(key) {
-            Option::Some(pair.get_value())
-        } else {
+        let pair_index = self.0.find_first_index(key);
+        if pair_index == usize::MAX {
             Option::None
+        } else {
+            Option::Some(self.0[pair_index].get_value())
         }
+        //if let Some(pair) = self.0.find_first(key) {
+        //    Option::Some(pair.get_value())
+        //} else {
+        //    Option::None
+        //}
     }
 
     #[inline]
     pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
-        if let Some(pair) = self.0.find_first_mut(key) {
-            Option::Some(pair.get_value_mut())
-        } else {
+        let existing_pair_index = self.0.find_first_index(key);
+        if existing_pair_index == usize::MAX {
             Option::None
+        } else {
+            Option::Some(self.0[existing_pair_index].get_value_mut())
         }
+        //if let Some(pair) = self.0.find_first_mut(key) {
+        //    Option::Some(pair.get_value_mut())
+        //} else {
+        //    Option::None
+        //}
     }
 
     #[inline]

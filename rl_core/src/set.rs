@@ -178,6 +178,59 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
         }
     }
 
+    pub fn find_first_index(&self, key: T::KeyType) -> usize {
+        if T::IMMUTABLE_KEY {
+            self.0.find_first_index(key)
+        } else {
+            let mut first_elem_index = self.0.find_first_index(key);
+            while first_elem_index != usize::MAX {
+                if self[first_elem_index].get_key() == key {
+                    return first_elem_index;
+                }
+                first_elem_index = self.0.find_next_index(first_elem_index);
+            }
+            usize::MAX
+        }
+    }
+
+    pub fn find_next_index(&self, index: usize) -> usize {
+        debug_assert!(index != usize::MAX && index < self.num());
+        let key = self[index].get_key();
+        if T::IMMUTABLE_KEY {
+            self.0.find_next_index(index)
+        } else {
+            let mut next_elem_index = self.0.find_next_index(index);
+            while next_elem_index != usize::MAX {
+                if self[next_elem_index].get_key() == key {
+                    return next_elem_index;
+                }
+                next_elem_index = self.0.find_next_index(next_elem_index);
+            }
+            usize::MAX
+        }
+    }
+
+    pub fn find_index_or_insert_mut(&mut self, value: T) -> usize {
+        let key = value.get_key();
+        if T::IMMUTABLE_KEY {
+            let first_elem_index = self.0.find_first_index(key);
+            if first_elem_index != usize::MAX {
+                first_elem_index
+            } else {
+                self.insert(value)
+            }
+        } else {
+            let mut first_elem_index = self.0.find_first_index(key);
+            while first_elem_index != usize::MAX {
+                if self[first_elem_index].get_key() == key {
+                    return first_elem_index;
+                }
+                first_elem_index = self.0.find_next_index(first_elem_index);
+            }
+            self.insert(value)
+        }
+    }
+/*
     pub fn find_first(&self, key: T::KeyType) -> Option<&T> {
         if T::IMMUTABLE_KEY {
             let first_elem_index = self.0.find_first_index(key);
@@ -212,27 +265,6 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
             }
         }
         Option::None
-    }
-
-    pub fn find_index_or_insert_mut(&mut self, value: T) -> usize {
-        let key = value.get_key();
-        if T::IMMUTABLE_KEY {
-            let first_elem_index = self.0.find_first_index(key);
-            if first_elem_index != usize::MAX {
-                first_elem_index
-            } else {
-                self.insert(value)
-            }
-        } else {
-            let mut first_elem_index = self.0.find_first_index(key);
-            while first_elem_index != usize::MAX {
-                if self[first_elem_index].get_key() == key {
-                    return first_elem_index;
-                }
-                first_elem_index = self.0.find_next_index(first_elem_index);
-            }
-            self.insert(value)
-        }
     }
 
     pub fn find_next(&self, current: &T) -> Option<&T> {
@@ -279,7 +311,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
             }
         }
         Option::None
-    }
+    }*/
 }
 
 impl<T, DataAlloc, EntriesAlloc, TableAlloc> Deref for Set<T, DataAlloc, EntriesAlloc, TableAlloc> where

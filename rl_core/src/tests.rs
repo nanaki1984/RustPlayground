@@ -17,6 +17,8 @@ fn map_test() {
     assert_eq!(map.remove("key").unwrap(), 10);
     map.clear();
     assert!(map.is_empty());
+    assert_eq!(*map.get_or_insert_default_mut("default key"), Default::default());
+    assert_eq!(map.contains("default key"), true);
 }
 
 #[test]
@@ -49,34 +51,19 @@ fn set_test() {
     set.insert(SetNumber::new(15));
     set.insert(SetNumber::new(15));
     set.insert(SetNumber::new(20));
-    //assert_eq!(set.num_with_key(10), 3);
-    //assert_eq!(set.num_with_key(15), 2);
-    //assert_eq!(set.num_with_key(20), 1);
-    //assert_eq!(set.num_with_key(25), 0);
 
-    //assert_eq!(set.swap_remove(0).get_num(), 10);
-    let test_ref_index;
-    {
-        let test_ref = unsafe{ set.get_unchecked(0) };
-        test_ref_index = set.get_element_index(test_ref).unwrap();
-        assert_eq!(test_ref_index, 0);
-    }
-    assert_eq!(set.swap_remove(test_ref_index).get_num(), 10);
+    assert_eq!(set.swap_remove(0).get_num(), 10);
 
     set.insert(SetNumber::new(25));
-    //assert_eq!(set.num_with_key(10), 2);
-    //assert_eq!(set.num_with_key(15), 2);
-    //assert_eq!(set.num_with_key(20), 1);
-    //assert_eq!(set.num_with_key(25), 1);
     assert_eq!(set.num(), 6);
-    let elem20 = set.find_first(20).unwrap();
+    let elem20 = &set[set.find_first_index(20)];
     assert_eq!(elem20.get_num(), 20);
-    assert_eq!(set.find_next(elem20), Option::None);
-    let mut elem10 = set.find_first(10).unwrap();
+    assert_eq!(set.find_next_index(set.get_element_index(elem20).unwrap()), usize::MAX);
+    let mut elem10 = &set[set.find_first_index(10)];
     assert_eq!(elem10.get_num(), 10);
-    elem10 = set.find_next(elem10).unwrap();
+    elem10 = &set[set.find_next_index(set.get_element_index(elem10).unwrap())];
     assert_eq!(elem10.get_num(), 10);
-    assert_eq!(set.find_next(elem10), Option::None);
+    assert_eq!(set.find_next_index(set.get_element_index(elem10).unwrap()), usize::MAX);
     set.clear();
     assert_eq!(set.num(), 0);
 
