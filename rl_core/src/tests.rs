@@ -4,10 +4,10 @@ use crate::{array::Array, set::Set, map::Map, alloc::InlineAllocator};
 
 #[test]
 fn map_test() {
-    let mut map: Map<&str, i32> = Map::new();
+    let mut map: Map<String, i32> = Map::new();
     assert_eq!(map.contains("key"), false);
-    map.insert("key", 10);
-    map.insert("other key", 20);
+    map.insert("key".to_string(), 10);
+    map.insert("other key".to_string(), 20);
     assert!(!map.is_empty());
     assert_eq!(map.contains("key"), true);
     assert_eq!(map.contains("other key"), true);
@@ -21,7 +21,7 @@ fn map_test() {
     assert_eq!(map.remove("key").unwrap(), 10);
     map.clear();
     assert!(map.is_empty());
-    assert_eq!(*map.get_or_insert_default_mut("default key"), Default::default());
+    assert_eq!(*map.get_or_insert_default_mut("default key".to_string()), Default::default());
     assert_eq!(map.contains("default key"), true);
 }
 
@@ -30,12 +30,10 @@ fn set_test() {
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
     struct SetNumber(i32);
     impl SetItem for SetNumber {
-        const IMMUTABLE_KEY: bool = false;
-
         type KeyType = i32;
 
-        fn get_key(&self) -> Self::KeyType {
-            self.0
+        fn get_key(&self) -> &Self::KeyType {
+            &self.0
         }
     }
     impl SetNumber {
@@ -60,10 +58,10 @@ fn set_test() {
 
     set.insert(SetNumber::new(25));
     assert_eq!(set.num(), 6);
-    let elem20 = &set[set.find_first_index(20)];
+    let elem20 = &set[set.find_first_index(&20)];
     assert_eq!(elem20.get_num(), 20);
     assert_eq!(set.find_next_index(set.get_element_index(elem20).unwrap()), usize::MAX);
-    let mut elem10 = &set[set.find_first_index(10)];
+    let mut elem10 = &set[set.find_first_index(&10)];
     assert_eq!(elem10.get_num(), 10);
     elem10 = &set[set.find_next_index(set.get_element_index(elem10).unwrap())];
     assert_eq!(elem10.get_num(), 10);
@@ -74,8 +72,8 @@ fn set_test() {
     for i in 0..10 {
         set.insert(SetNumber::new(i % 2));
     }
-    assert_eq!(set.remove_all::<DefaultAllocator>(0).num(), 5);
-    assert_eq!(set.remove_all::<DefaultAllocator>(1).num(), 5);
+    assert_eq!(set.remove_all::<DefaultAllocator, i32>(&0).num(), 5);
+    assert_eq!(set.remove_all::<DefaultAllocator, i32>(&1).num(), 5);
     assert_eq!(set.num(), 0);
 }
 

@@ -1,8 +1,10 @@
+use std::borrow::Borrow;
 use std::ops::{Index, IndexMut};
 
-use crate::set::{SetEntry, Set};
+use crate::raw_set::RawSetEntry;
+use crate::set::Set;
 use crate::array::Array;
-use crate::fast_hash::{SetKey, KeyValuePair};
+use crate::fast_hash::{SetKey, KeyValuePair, FastHash};
 use crate::alloc::{ArrayAllocator, DefaultAllocator, InlineAllocator};
 
 pub struct Map<K, V, DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator, TableAlloc = DefaultAllocator>
@@ -12,7 +14,7 @@ pub struct Map<K, V, DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocat
     K: SetKey,
     V: Unpin,
     DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
-    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>;
 
 impl<K: SetKey, V: Unpin> Map<K, V> {
@@ -26,7 +28,7 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
     K: SetKey,
     V: Unpin,
     DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
-    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
@@ -39,7 +41,7 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
     K: SetKey,
     V: Unpin,
     DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
-    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
@@ -68,13 +70,16 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
     }
 
     #[inline]
-    pub fn contains(&self, key: K) -> bool {
+    pub fn contains<Q: ?Sized>(&self, key: &Q) -> bool where
+        K: Borrow<Q>,
+        Q: FastHash + Eq
+    {
         self.0.find_first_index(key) != usize::MAX
     }
 
     #[inline]
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        let existing_pair_index = self.0.find_first_index(key);
+        let existing_pair_index = self.0.find_first_index(&key);
         if existing_pair_index == usize::MAX {
             self.0.insert(KeyValuePair::new(key, value));
             Option::None
@@ -84,7 +89,10 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
     }
 
     #[inline]
-    pub fn remove(&mut self, key: K) -> Option<V> {
+    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V> where
+        K: Borrow<Q>,
+        Q: FastHash + Eq
+    {
         let mut pair_array: Array<KeyValuePair<K, V>, InlineAllocator<1, KeyValuePair<K, V>>> = self.0.remove_all(key);
         if pair_array.num() > 0 {
             Option::Some(KeyValuePair::take_value(pair_array.swap_remove(0)))
@@ -94,7 +102,10 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
     }
 
     #[inline]
-    pub fn get(&self, key: K) -> Option<&V> {
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V> where
+        K: Borrow<Q>,
+        Q: FastHash + Eq
+    {
         let pair_index = self.0.find_first_index(key);
         if pair_index == usize::MAX {
             Option::None
@@ -104,7 +115,10 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
     }
 
     #[inline]
-    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
+    pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V> where
+        K: Borrow<Q>,
+        Q: FastHash + Eq
+    {
         let existing_pair_index = self.0.find_first_index(key);
         if existing_pair_index == usize::MAX {
             Option::None
@@ -129,7 +143,7 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
     K: SetKey,
     V: Unpin + Default,
     DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
-    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
@@ -146,30 +160,32 @@ impl<K: SetKey, V: Unpin> Default for Map<K, V> where
     }
 }
 
-impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Index<K> for Map<K, V, DataAlloc, EntriesAlloc, TableAlloc> where
-    K: SetKey,
+impl<K, V, DataAlloc, EntriesAlloc, TableAlloc, Q> Index<&Q> for Map<K, V, DataAlloc, EntriesAlloc, TableAlloc> where
+    K: SetKey + Borrow<Q>,
     V: Unpin,
     DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
-    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
-    TableAlloc: ArrayAllocator<usize>
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
+    TableAlloc: ArrayAllocator<usize>,
+    Q: FastHash + Eq + ?Sized
 {
     type Output = V;
 
     #[inline]
-    fn index(&self, key: K) -> &V {
+    fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
     }
 }
 
-impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> IndexMut<K> for Map<K, V, DataAlloc, EntriesAlloc, TableAlloc> where
-    K: SetKey,
+impl<K, V, DataAlloc, EntriesAlloc, TableAlloc, Q> IndexMut<&Q> for Map<K, V, DataAlloc, EntriesAlloc, TableAlloc> where
+    K: SetKey + Borrow<Q>,
     V: Unpin,
     DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
-    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
-    TableAlloc: ArrayAllocator<usize>
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
+    TableAlloc: ArrayAllocator<usize>,
+    Q: FastHash + Eq + ?Sized
 {
     #[inline]
-    fn index_mut(&mut self, key: K) -> &mut V {
+    fn index_mut(&mut self, key: &Q) -> &mut V {
         self.get_mut(key).expect("no entry found for key")
     }
 }

@@ -4,23 +4,22 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::slice::{self, SliceIndex};
 use std::option::Option;
+use std::borrow::Borrow;
 
 use crate::alloc::{AllocatorBase, DefaultAllocator, ArrayAllocator};
-use crate::fast_hash::SetItem;
+use crate::fast_hash::{SetItem, FastHash};
 use crate::raw_set::RawSet;
 use crate::raw_set::RawSetEntry;
 use crate::array::Array;
 
-pub type SetEntry<T> = RawSetEntry<<T as SetItem>::KeyType>;
-
 pub struct Set<T, DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator, TableAlloc = DefaultAllocator>
 (
-    RawSet<T::KeyType, DataAlloc, EntriesAlloc, TableAlloc>,
+    RawSet<DataAlloc, EntriesAlloc, TableAlloc>,
     PhantomData<T>,
 ) where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>;
 
 impl<T: SetItem> Set<T> {
@@ -38,7 +37,7 @@ impl<T: SetItem> Set<T> {
 impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
@@ -55,7 +54,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
 impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
@@ -106,41 +105,35 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
     #[inline]
     pub fn insert(&mut self, value: T) -> usize {
         unsafe {
-            self.0.insert_data(value.get_key(), |ptr| {
+            self.0.insert_data(value.get_key().fast_hash(), |ptr| {
                 ptr::write(ptr.cast::<T>(), value)
             })
         }
     }
 
     #[inline]
-    pub fn remove_all<A: AllocatorBase>(&mut self, key: T::KeyType) -> Array<T, A> {
+    pub fn remove_all<A: AllocatorBase, Q: ?Sized>(&mut self, key: &Q) -> Array<T, A> where
+        T::KeyType: Borrow<Q>,
+        Q: FastHash + Eq
+    {
         let mut array = Array::<T, A>::custom_allocator();
 
-        let mut index = self.0.find_first_index(key);
+        let mut index = self.0.find_first_index(key.fast_hash());
         while index != usize::MAX {
-            if T::IMMUTABLE_KEY {
+            let next_index = self.0.find_next_index(index);
+
+            if self[index].get_key().borrow() == key {
                 unsafe {
                     self.0.remove_data(index, |ptr| {
                         array.push_back(ptr::read(ptr.cast::<T>()));
                     });
-                }
-                index = self.0.find_first_index(key);
-            } else {
-                let next_index = self.0.find_next_index(index);
+                }    
+            }
 
-                if self[index].get_key() == key {
-                    unsafe {
-                        self.0.remove_data(index, |ptr| {
-                            array.push_back(ptr::read(ptr.cast::<T>()));
-                        });
-                    }    
-                }
-
-                // Change index to next_index only if is valid
-                // (next_index == self.num() means next_index was the last element that has been moved on the same index now)
-                if next_index != self.0.num() {
-                    index = next_index;
-                }
+            // Change index to next_index only if is valid
+            // (next_index == self.num() means next_index was the last element that has been moved on the same index now)
+            if next_index != self.0.num() {
+                index = next_index;
             }
         }
 
@@ -178,64 +171,50 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
         }
     }
 
-    pub fn find_first_index(&self, key: T::KeyType) -> usize {
-        if T::IMMUTABLE_KEY {
-            self.0.find_first_index(key)
-        } else {
-            let mut first_elem_index = self.0.find_first_index(key);
-            while first_elem_index != usize::MAX {
-                if self[first_elem_index].get_key() == key {
-                    return first_elem_index;
-                }
-                first_elem_index = self.0.find_next_index(first_elem_index);
+    pub fn find_first_index<Q: ?Sized>(&self, key: &Q) -> usize where
+        T::KeyType: Borrow<Q>,
+        Q: FastHash + Eq
+    {
+        let mut first_elem_index = self.0.find_first_index(key.fast_hash());
+        while first_elem_index != usize::MAX {
+            if self[first_elem_index].get_key().borrow() == key {
+                return first_elem_index;
             }
-            usize::MAX
+            first_elem_index = self.0.find_next_index(first_elem_index);
         }
+        usize::MAX
     }
 
     pub fn find_next_index(&self, index: usize) -> usize {
         debug_assert!(index != usize::MAX && index < self.num());
         let key = self[index].get_key();
-        if T::IMMUTABLE_KEY {
-            self.0.find_next_index(index)
-        } else {
-            let mut next_elem_index = self.0.find_next_index(index);
-            while next_elem_index != usize::MAX {
-                if self[next_elem_index].get_key() == key {
-                    return next_elem_index;
-                }
-                next_elem_index = self.0.find_next_index(next_elem_index);
+        let mut next_elem_index = self.0.find_next_index(index);
+        while next_elem_index != usize::MAX {
+            if self[next_elem_index].get_key() == key {
+                return next_elem_index;
             }
-            usize::MAX
+            next_elem_index = self.0.find_next_index(next_elem_index);
         }
+        usize::MAX
     }
 
     pub fn find_index_or_insert_mut(&mut self, value: T) -> usize {
         let key = value.get_key();
-        if T::IMMUTABLE_KEY {
-            let first_elem_index = self.0.find_first_index(key);
-            if first_elem_index != usize::MAX {
-                first_elem_index
-            } else {
-                self.insert(value)
+        let mut first_elem_index = self.0.find_first_index(key.fast_hash());
+        while first_elem_index != usize::MAX {
+            if self[first_elem_index].get_key() == key {
+                return first_elem_index;
             }
-        } else {
-            let mut first_elem_index = self.0.find_first_index(key);
-            while first_elem_index != usize::MAX {
-                if self[first_elem_index].get_key() == key {
-                    return first_elem_index;
-                }
-                first_elem_index = self.0.find_next_index(first_elem_index);
-            }
-            self.insert(value)
+            first_elem_index = self.0.find_next_index(first_elem_index);
         }
+        self.insert(value)
     }
 }
 
 impl<T, DataAlloc, EntriesAlloc, TableAlloc> Deref for Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     type Target = [T];
@@ -248,7 +227,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Deref for Set<T, DataAlloc, Entries
 impl<T, DataAlloc, EntriesAlloc, TableAlloc> DerefMut for Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     fn deref_mut(&mut self) -> &mut [T] {
@@ -259,7 +238,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> DerefMut for Set<T, DataAlloc, Entr
 impl<T, DataAlloc, EntriesAlloc, TableAlloc, I> Index<I> for Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>,
     I: SliceIndex<[T]>
 {
@@ -274,7 +253,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc, I> Index<I> for Set<T, DataAlloc, E
 impl<T, DataAlloc, EntriesAlloc, TableAlloc, I> IndexMut<I> for Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>,
     I: SliceIndex<[T]>
 {
@@ -287,7 +266,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc, I> IndexMut<I> for Set<T, DataAlloc
 impl<'a, T, DataAlloc, EntriesAlloc, TableAlloc> IntoIterator for &'a Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     type Item = &'a T;
@@ -301,7 +280,7 @@ impl<'a, T, DataAlloc, EntriesAlloc, TableAlloc> IntoIterator for &'a Set<T, Dat
 impl<'a, T, DataAlloc, EntriesAlloc, TableAlloc> IntoIterator for &'a mut Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     type Item = &'a mut T;
@@ -315,7 +294,7 @@ impl<'a, T, DataAlloc, EntriesAlloc, TableAlloc> IntoIterator for &'a mut Set<T,
 impl<T, DataAlloc, EntriesAlloc, TableAlloc> Drop for Set<T, DataAlloc, EntriesAlloc, TableAlloc> where
     T: SetItem,
     DataAlloc: ArrayAllocator<T>,
-    EntriesAlloc: ArrayAllocator<SetEntry<T>>,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>
 {
     fn drop(&mut self) {

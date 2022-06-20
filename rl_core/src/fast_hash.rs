@@ -4,7 +4,7 @@ pub trait FastHash {
     fn fast_hash(&self) -> usize;
 }
 
-pub trait SetKey : Copy + Eq + Unpin + FastHash { }
+pub trait SetKey : Eq + Unpin + FastHash { }
 
 impl FastHash for i32 {
     fn fast_hash(&self) -> usize {
@@ -30,7 +30,16 @@ impl FastHash for u64 {
     }
 }
 
-impl FastHash for &str {
+impl FastHash for str {
+    // TODO: copy hasher from my framework, see if possible to make it compile time like in c++
+    fn fast_hash(&self) -> usize {
+        let mut hasher = DefaultHasher::new();
+        hasher.write(self.as_bytes());
+        hasher.finish() as usize
+    }
+}
+
+impl FastHash for String {
     // TODO: copy hasher from my framework, see if possible to make it compile time like in c++
     fn fast_hash(&self) -> usize {
         let mut hasher = DefaultHasher::new();
@@ -43,26 +52,23 @@ impl SetKey for i32 { }
 impl SetKey for u32 { }
 impl SetKey for i64 { }
 impl SetKey for u64 { }
-impl SetKey for &str { }
+impl SetKey for str { }
+impl SetKey for String { }
 
 pub trait SetItem : Sized + Unpin {
-    const IMMUTABLE_KEY: bool;
-
     type KeyType : SetKey;
 
-    fn get_key(&self) -> Self::KeyType;
+    fn get_key(&self) -> &Self::KeyType;
 }
 
 pub struct KeyValuePair<K: SetKey, V: Unpin>(K, V);
 
 impl<K: SetKey, V: Unpin> SetItem for KeyValuePair<K, V> {
-    const IMMUTABLE_KEY: bool = true;
-
     type KeyType = K;
 
     #[inline]
-    fn get_key(&self) -> Self::KeyType {
-        self.0
+    fn get_key(&self) -> &Self::KeyType {
+        &self.0
     }
 }
 
