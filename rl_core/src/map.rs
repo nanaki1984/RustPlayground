@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut};
+
 use crate::set::{SetEntry, Set};
 use crate::array::Array;
 use crate::fast_hash::{SetKey, KeyValuePair};
@@ -141,5 +143,33 @@ impl<K: SetKey, V: Unpin> Default for Map<K, V> where
 {
     fn default() -> Map<K, V> {
         Map::new()
+    }
+}
+
+impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Index<K> for Map<K, V, DataAlloc, EntriesAlloc, TableAlloc> where
+    K: SetKey,
+    V: Unpin,
+    DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
+    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
+    TableAlloc: ArrayAllocator<usize>
+{
+    type Output = V;
+
+    #[inline]
+    fn index(&self, key: K) -> &V {
+        self.get(key).expect("no entry found for key")
+    }
+}
+
+impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> IndexMut<K> for Map<K, V, DataAlloc, EntriesAlloc, TableAlloc> where
+    K: SetKey,
+    V: Unpin,
+    DataAlloc: ArrayAllocator<KeyValuePair<K, V>>,
+    EntriesAlloc: ArrayAllocator<SetEntry<KeyValuePair<K, V>>>,
+    TableAlloc: ArrayAllocator<usize>
+{
+    #[inline]
+    fn index_mut(&mut self, key: K) -> &mut V {
+        self.get_mut(key).expect("no entry found for key")
     }
 }

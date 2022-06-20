@@ -12,8 +12,12 @@ fn map_test() {
     assert_eq!(map.contains("key"), true);
     assert_eq!(map.contains("other key"), true);
     assert_eq!(*map.get("other key").unwrap(), 20);
+    assert_eq!(map["other key"], 20);
     *map.get_mut("other key").unwrap() = 30;
     assert_eq!(*map.get("other key").unwrap(), 30);
+    assert_eq!(map["other key"], 30);
+    map["other key"] = 40;
+    assert_eq!(map["other key"], 40);
     assert_eq!(map.remove("key").unwrap(), 10);
     map.clear();
     assert!(map.is_empty());
