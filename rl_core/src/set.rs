@@ -104,11 +104,11 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
     }
 
     #[inline]
-    pub fn insert(&mut self, value: T) {
+    pub fn insert(&mut self, value: T) -> usize {
         unsafe {
             self.0.insert_data(value.get_key(), |ptr| {
                 ptr::write(ptr.cast::<T>(), value)
-            });
+            })
         }
     }
 
@@ -159,7 +159,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
     }
 
     #[inline]
-    pub fn get_element_index<'a>(&'a self, element: &'a T) -> Option<usize> {
+    pub fn get_element_index(&self, element: &T) -> Option<usize> {
         let elem_ptr = element as *const T;
         let elem_idx = unsafe{ elem_ptr.offset_from(self.as_ptr()) };
         if elem_idx >= 0 && elem_idx < self.num().try_into().unwrap() {
@@ -178,7 +178,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
         }
     }
 
-    pub fn find_first<'a>(&'a self, key: T::KeyType) -> Option<&'a T> {
+    pub fn find_first(&self, key: T::KeyType) -> Option<&T> {
         if T::IMMUTABLE_KEY {
             let first_elem_index = self.0.find_first_index(key);
             if first_elem_index != usize::MAX {
@@ -196,7 +196,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
         Option::None
     }
 
-    pub fn find_first_mut<'a>(&'a mut self, key: T::KeyType) -> Option<&'a mut T> {
+    pub fn find_first_mut(&mut self, key: T::KeyType) -> Option<&mut T> {
         if T::IMMUTABLE_KEY {
             let first_elem_index = self.0.find_first_index(key);
             if first_elem_index != usize::MAX {
@@ -214,7 +214,28 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
         Option::None
     }
 
-    pub fn find_next<'a>(&'a self, current: &'a T) -> Option<&'a T> {
+    pub fn find_index_or_insert_mut(&mut self, value: T) -> usize {
+        let key = value.get_key();
+        if T::IMMUTABLE_KEY {
+            let first_elem_index = self.0.find_first_index(key);
+            if first_elem_index != usize::MAX {
+                first_elem_index
+            } else {
+                self.insert(value)
+            }
+        } else {
+            let mut first_elem_index = self.0.find_first_index(key);
+            while first_elem_index != usize::MAX {
+                if self[first_elem_index].get_key() == key {
+                    return first_elem_index;
+                }
+                first_elem_index = self.0.find_next_index(first_elem_index);
+            }
+            self.insert(value)
+        }
+    }
+
+    pub fn find_next(&self, current: &T) -> Option<&T> {
         let current_key = current.get_key();
         let elem_ptr = current as *const T;
         let elem_idx = unsafe{ elem_ptr.offset_from(self.as_ptr()) };
@@ -237,7 +258,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
         Option::None
     }
 
-    pub fn find_next_mut<'a>(&'a mut self, current: &'a mut T) -> Option<&'a mut T> {
+    pub fn find_next_mut(&mut self, current: &mut T) -> Option<&mut T> {
         let current_key = current.get_key();
         let elem_ptr = current as *mut T;
         let elem_idx = unsafe{ elem_ptr.offset_from(self.as_mut_ptr()) };

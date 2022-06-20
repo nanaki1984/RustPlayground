@@ -1,6 +1,23 @@
 use crate::alloc::DefaultAllocator;
 use crate::fast_hash::SetItem;
-use crate::{array::Array, set::Set, alloc::InlineAllocator};
+use crate::{array::Array, set::Set, map::Map, alloc::InlineAllocator};
+
+#[test]
+fn map_test() {
+    let mut map: Map<&str, i32> = Map::new();
+    assert_eq!(map.contains("key"), false);
+    map.insert("key", 10);
+    map.insert("other key", 20);
+    assert!(!map.is_empty());
+    assert_eq!(map.contains("key"), true);
+    assert_eq!(map.contains("other key"), true);
+    assert_eq!(*map.get("other key").unwrap(), 20);
+    *map.get_mut("other key").unwrap() = 30;
+    assert_eq!(*map.get("other key").unwrap(), 30);
+    assert_eq!(map.remove("key").unwrap(), 10);
+    map.clear();
+    assert!(map.is_empty());
+}
 
 #[test]
 fn set_test() {

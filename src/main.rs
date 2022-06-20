@@ -6,6 +6,7 @@ use std::vec::{Vec};
 use std::time::{Duration, Instant};
 use rl_core::alloc::InlineAllocator;
 use rl_core::array::Array;
+use rl_core::map::Map;
 /*
 struct MockRawArray<A : AllocatorBase> {
     alloc: A,
@@ -181,4 +182,21 @@ fn main() {
     // call to find them in asm
     use_array();
     use_vec();
+/*
+    struct SomeDroppableStruct {
+        number: i32,
+    }
+    impl Drop for SomeDroppableStruct {
+        fn drop(&mut self) {
+            println!("dtor: {}", self.number);
+        }
+    }
+    let mut test_map = Map::new();
+    test_map.insert("key", SomeDroppableStruct{ number: 10 });
+    test_map.insert("other_key", SomeDroppableStruct{ number: 20 });
+    let some_num = test_map.remove("key").unwrap();
+    println!("Before drop");
+    drop(some_num);
+    println!("After drop");
+*/
 }
