@@ -138,6 +138,42 @@ fn use_array() {
     println!("array {} ms (sum {})", now.elapsed().as_millis(), sum);
 }
 
+fn use_map() {
+    let now = Instant::now();
+
+    let mut map = Map::new();
+    for i in 0..1000000 {
+        //map.insert(i.to_string(), i);
+        map.insert(i, i % 2);
+    }
+    let mut sum = 0;
+    //for i in 0..1000000 {
+    for i in 999999..=0 {
+        //sum += map[&i.to_string()];
+        sum += map[&i];
+    }
+
+    println!("map {} ms (sum {})", now.elapsed().as_millis(), sum);
+}
+
+fn use_hashmap() {
+    let now = Instant::now();
+
+    let mut hashmap = HashMap::new();
+    for i in 0..1000000 {
+        //hashmap.insert(i.to_string(), i);
+        hashmap.insert(i, i % 2);
+    }
+    let mut sum = 0;
+    //for i in 0..1000000 {
+    for i in 999999..=0 {
+        //sum += hashmap[&i.to_string()];
+        sum += hashmap[&i];
+    }
+
+    println!("hashmap {} ms (sum {})", now.elapsed().as_millis(), sum);
+}
+
 fn main() {
     let ti = TypeInfo::from_type::<TestStruct>();
     //let ti = TestStruct::type_info();
@@ -182,4 +218,7 @@ fn main() {
     // call to find them in asm
     use_array();
     use_vec();
+
+    use_map();
+    use_hashmap();
 }
