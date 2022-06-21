@@ -23,7 +23,7 @@ impl<A: AllocatorBase> Drop for RawArray<A> {
 
 impl<A: AllocatorBase> RawArray<A> {
     #[inline]
-    pub const unsafe fn for_type_unchecked(layout: Layout) -> Self {
+    pub unsafe fn for_type_unchecked(layout: Layout) -> Self {
         RawArray {
             data: NonNull::dangling(),
             items_layout: layout,
@@ -41,7 +41,7 @@ impl<A: AllocatorBase> RawArray<A> {
     }
 
     #[inline]
-    pub const fn for_type<T: Sized>() -> Self {
+    pub fn for_type<T: Sized>() -> Self {
         unsafe{ Self::for_type_unchecked(Layout::new::<T>()) }
     }
 

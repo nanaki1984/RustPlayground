@@ -28,7 +28,7 @@ impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableA
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
-    pub const unsafe fn for_type_unchecked(layout: Layout) -> Self {
+    pub unsafe fn for_type_unchecked(layout: Layout) -> Self {
         Self {
             data: RawArray::<DataAlloc>::for_type_unchecked(layout),
             entries: Array::custom_allocator(),
@@ -48,7 +48,7 @@ impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableA
     }
 
     #[inline]
-    pub const fn for_type<T: Sized>() -> Self {
+    pub fn for_type<T: Sized>() -> Self {
         unsafe{ Self::for_type_unchecked(Layout::new::<T>()) }
     }
 
@@ -56,7 +56,13 @@ impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableA
     pub fn for_type_with_table_size<T: Sized>(table_size: usize) -> Self {
         unsafe{ Self::for_type_with_table_size_unchecked(Layout::new::<T>(), table_size) }
     }
+}
 
+impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableAlloc> where
+    DataAlloc: AllocatorBase,
+    EntriesAlloc: ArrayAllocator<RawSetEntry>,
+    TableAlloc: ArrayAllocator<usize>
+{
     #[inline]
     pub fn find_first_index(&self, hash: usize) -> usize {
         let mut entry_index = usize::MAX;

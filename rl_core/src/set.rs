@@ -24,7 +24,7 @@ pub struct Set<T, DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator,
 
 impl<T: SetItem> Set<T> {
     #[inline]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Set(RawSet::for_type::<T>(), PhantomData)
     }
 
@@ -41,7 +41,7 @@ impl<T, DataAlloc, EntriesAlloc, TableAlloc> Set<T, DataAlloc, EntriesAlloc, Tab
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
-    pub const fn custom_allocators() -> Self {
+    pub fn custom_allocators() -> Self {
         Set(RawSet::for_type::<T>(), PhantomData)
     }
 
