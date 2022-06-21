@@ -1,6 +1,7 @@
 use std::slice;
 use std::str;
 use std::ptr::{self};
+use std::mem::MaybeUninit;
 
 use crate::fast_hash::{self};
 use crate::raw_set::RawSet;
@@ -10,7 +11,7 @@ static mut STRINGS_TABLE: StringsTable = StringsTable::new();
 
 struct StringsTableEntry {
     hash: usize,
-    ptr: *const u8,
+    ptr: *const u8, // TODO: put a [u8; 256] here to store the string and remove the Array<u8>
     len: usize,
 }
 
@@ -25,8 +26,9 @@ impl StringsTableEntry {
 }
 
 struct StringsTable {
-    table: RawSet,
-    data: Array<u8>,
+    initialized: bool,
+    table: MaybeUninit<RawSet>,
+    data: MaybeUninit<Array<u8>>,
 }
 
 unsafe impl Sync for StringsTable { }
@@ -34,12 +36,15 @@ unsafe impl Sync for StringsTable { }
 impl Drop for StringsTable {
     fn drop(&mut self) {
         unsafe {
-            ptr::drop_in_place(
-                ptr::slice_from_raw_parts_mut(
-                    self.table.as_mut_ptr().cast::<StringsTableEntry>(),
-                    self.table.num()
-                )
-            );
+            if self.initialized {
+                let table = self.table.assume_init();
+                ptr::drop_in_place(
+                    ptr::slice_from_raw_parts_mut(
+                        table.as_mut_ptr().cast::<StringsTableEntry>(),
+                        table.num()
+                    )
+                );
+            }
         }
     }
 }
@@ -47,16 +52,28 @@ impl Drop for StringsTable {
 impl StringsTable {
     const fn new() -> Self {
         Self {
-            table: RawSet::for_type::<StringsTableEntry>(),
-            data: Array::new(),
+            initialized: false,
+            table: MaybeUninit::uninit(),
+            data: MaybeUninit::uninit(),
+        }
+    }
+
+    fn lazy_init(&mut self) {
+        if !self.initialized {
+            table = MaybeUninit::new(RawSet::for_type::<StringsTableEntry>());
+            data = MaybeUninit::new(Array::new());
+            self.initialized = true;
         }
     }
 
     fn get_or_add_string(&mut self, hash: usize, bytes: &[u8]) -> StringAtom {
-        let mut entry_index = self.table.find_first_index(hash);
+        self.lazy_init();
+
+        let mut entry_index = unsafe{ self.table.assume_init_ref().find_first_index(hash) };
         while entry_index != usize::MAX {
             let entry_bytes = unsafe {
                 (&*self.table
+                    .assume_init_ref()
                     .as_ptr()
                     .cast::<StringsTableEntry>()
                     .add(entry_index))
@@ -65,7 +82,7 @@ impl StringsTable {
             if bytes.eq_ignore_ascii_case(entry_bytes) {
                 break;
             }
-            entry_index = self.table.find_next_index(entry_index);
+            entry_index = unsafe{ self.table.assume_init_ref().find_next_index(entry_index) };
         }
 
         if entry_index == usize::MAX {
@@ -79,18 +96,21 @@ impl StringsTable {
 
             let new_string_ptr = unsafe{ self.data.as_ptr().add(new_string_offset) };
             entry_index = unsafe {
-                self.table.insert_data(hash, |ptr| {
-                    ptr::write(ptr.cast::<StringsTableEntry>(), StringsTableEntry {
-                        hash: hash,
-                        ptr: new_string_ptr,
-                        len: new_string_len
-                    })
+                self.table
+                    .assume_init_ref()
+                    .insert_data(hash, |ptr| {
+                        ptr::write(ptr.cast::<StringsTableEntry>(), StringsTableEntry {
+                            hash: hash,
+                            ptr: new_string_ptr,
+                            len: new_string_len
+                        })
                 })
             };
         }
 
         let entry = unsafe {
             &*self.table
+                .assume_init_ref()
                 .as_ptr()
                 .cast::<StringsTableEntry>()
                 .add(entry_index)
