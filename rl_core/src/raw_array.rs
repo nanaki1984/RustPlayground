@@ -3,9 +3,9 @@ use std::alloc::{Layout};
 use std::ptr::{self, NonNull};
 use std::ops::Range;
 
-use crate::alloc::AllocatorBase;
+use crate::alloc::{AllocatorBase, DefaultAllocator};
 
-pub(crate) struct RawArray<A: AllocatorBase> {
+pub(crate) struct RawArray<A = DefaultAllocator> where A: AllocatorBase {
     data: NonNull<u8>,
     items_layout: Layout,
     items_num: usize,

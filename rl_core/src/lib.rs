@@ -1,5 +1,6 @@
 pub mod fast_hash;
 pub mod alloc;
+pub mod strings_table;
 
 mod raw_array;
 mod raw_set;
