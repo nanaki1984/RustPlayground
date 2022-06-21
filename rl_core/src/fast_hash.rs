@@ -1,5 +1,24 @@
 use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 
+pub const fn fnv_hash_const<const N: usize>(bytes: &[u8; N]) -> u32 {
+    let mut hash = 2166136261u32;
+    let mut i = 0;
+    while i < N {
+        hash = u32::wrapping_mul(hash ^ (bytes[i] as u32), 16777619u32);
+        i += 1;
+    }
+    hash
+}
+
+pub fn fnv_hash(bytes: &[u8]) -> u32 {
+    let bytes_len = bytes.len();
+    let mut hash = 2166136261u32;
+    for i in 0..bytes_len {
+        hash = u32::wrapping_mul(hash ^ (bytes[i] as u32), 16777619u32);
+    }
+    hash
+}
+
 pub trait FastHash {
     fn fast_hash(&self) -> usize;
 }
@@ -31,20 +50,14 @@ impl FastHash for u64 {
 }
 
 impl FastHash for str {
-    // TODO: copy hasher from my framework, see if possible to make it compile time like in c++
     fn fast_hash(&self) -> usize {
-        let mut hasher = DefaultHasher::new();
-        hasher.write(self.as_bytes());
-        hasher.finish() as usize
+        fnv_hash(self.as_bytes()) as usize
     }
 }
 
 impl FastHash for String {
-    // TODO: copy hasher from my framework, see if possible to make it compile time like in c++
     fn fast_hash(&self) -> usize {
-        let mut hasher = DefaultHasher::new();
-        hasher.write(self.as_bytes());
-        hasher.finish() as usize
+        fnv_hash(self.as_bytes()) as usize
     }
 }
 

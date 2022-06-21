@@ -1,6 +1,11 @@
 use crate::alloc::DefaultAllocator;
-use crate::fast_hash::SetItem;
+use crate::fast_hash::{SetItem, fnv_hash, fnv_hash_const};
 use crate::{array::Array, set::Set, map::Map, alloc::InlineAllocator};
+
+#[test]
+fn fnv_test() {
+    assert_eq!(fnv_hash("Hello world!".as_bytes()), fnv_hash_const(b"Hello world!"));
+}
 
 #[test]
 fn map_test() {

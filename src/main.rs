@@ -142,15 +142,16 @@ fn use_map() {
     let now = Instant::now();
 
     let mut map = Map::new();
-    for i in 0..1000000 {
-        //map.insert(i.to_string(), i);
-        map.insert(i, i % 2);
+    for i in 0..100000 {
+    //for i in 0..1000000 {
+        map.insert(i.to_string(), i);
+        //map.insert(i, i % 2);
     }
     let mut sum = 0;
+    for i in 0..100000 {
     //for i in 0..1000000 {
-    for i in 999999..=0 {
-        //sum += map[&i.to_string()];
-        sum += map[&i];
+        sum += map[&i.to_string()];
+        //sum += map[&i];
     }
 
     println!("map {} ms (sum {})", now.elapsed().as_millis(), sum);
@@ -160,15 +161,16 @@ fn use_hashmap() {
     let now = Instant::now();
 
     let mut hashmap = HashMap::new();
-    for i in 0..1000000 {
-        //hashmap.insert(i.to_string(), i);
-        hashmap.insert(i, i % 2);
+    for i in 0..100000 {
+    //for i in 0..1000000 {
+        hashmap.insert(i.to_string(), i);
+        //hashmap.insert(i, i % 2);
     }
     let mut sum = 0;
+    for i in 0..100000 {
     //for i in 0..1000000 {
-    for i in 999999..=0 {
-        //sum += hashmap[&i.to_string()];
-        sum += hashmap[&i];
+        sum += hashmap[&i.to_string()];
+        //sum += hashmap[&i];
     }
 
     println!("hashmap {} ms (sum {})", now.elapsed().as_millis(), sum);
@@ -181,7 +183,7 @@ const fn fnv_hash_impl<const N: usize, const I: usize>(bytes: &[u8; N]) -> u32 {
         (fnv_hash_impl::<N, {I - 1}>(bytes) ^ (bytes[I - 1] as u32)) * 16777619u32
     }
 }
-*/
+
 const fn fnv_hash<const N: usize>(bytes: &[u8; N]) -> u32 {
     //fnv_hash_impl::<N, N>(bytes)
     let mut hash = 2166136261u32;
@@ -195,14 +197,7 @@ const fn fnv_hash<const N: usize>(bytes: &[u8; N]) -> u32 {
     }
     hash
 }
-
-#[inline(never)]
-fn test_const_hash(div: u32) {
-    const HASH: u32 = fnv_hash(b"ciccia");
-    let num = HASH / div;
-    println!("some string hash: {}", num);
-}
-
+*/
 fn main() {
     let ti = TypeInfo::from_type::<TestStruct>();
     //let ti = TestStruct::type_info();
@@ -250,6 +245,4 @@ fn main() {
 
     use_map();
     use_hashmap();
-
-    test_const_hash(1024);
 }
