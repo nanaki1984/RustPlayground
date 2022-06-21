@@ -190,16 +190,17 @@ const fn fnv_hash<const N: usize>(bytes: &[u8; N]) -> u32 {
     //}
     let mut i = 0;
     while i < N {
-        hash = (hash ^ (bytes[i] as u32)) * 16777619u32;
+        hash = u32::wrapping_mul((hash ^ (bytes[i] as u32)), 16777619u32);
         i += 1;
     }
     hash
 }
 
 #[inline(never)]
-fn test_const_hash() {
-    const hash: u32 = fnv_hash(b"ciao mondo crudele");
-    println!("some string hash: {}", hash);
+fn test_const_hash(div: u32) {
+    const HASH: u32 = fnv_hash(b"ciccia");
+    let num = HASH / div;
+    println!("some string hash: {}", num);
 }
 
 fn main() {
@@ -250,5 +251,5 @@ fn main() {
     use_map();
     use_hashmap();
 
-    test_const_hash();
+    test_const_hash(1024);
 }
