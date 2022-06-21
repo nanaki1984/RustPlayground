@@ -1,5 +1,3 @@
-use std::{collections::hash_map::DefaultHasher, hash::Hasher};
-
 pub const fn fnv_hash_const<const N: usize>(bytes: &[u8; N]) -> u32 {
     let mut hash = 2166136261u32;
     let mut i = 0;

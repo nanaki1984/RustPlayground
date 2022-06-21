@@ -28,7 +28,7 @@ impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableA
     TableAlloc: ArrayAllocator<usize>
 {
     #[inline]
-    pub unsafe fn for_type_unchecked(layout: Layout) -> Self {
+    pub const unsafe fn for_type_unchecked(layout: Layout) -> Self {
         Self {
             data: RawArray::<DataAlloc>::for_type_unchecked(layout),
             entries: Array::custom_allocator(),
@@ -48,7 +48,7 @@ impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableA
     }
 
     #[inline]
-    pub fn for_type<T: Sized>() -> Self {
+    pub const fn for_type<T: Sized>() -> Self {
         unsafe{ Self::for_type_unchecked(Layout::new::<T>()) }
     }
 

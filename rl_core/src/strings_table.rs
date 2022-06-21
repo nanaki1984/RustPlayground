@@ -6,10 +6,10 @@ use crate::fast_hash::{self};
 use crate::raw_set::RawSet;
 use crate::array::Array;
 
-static STRINGS_TABLE: StringsTable = StringsTable::new();
+static mut STRINGS_TABLE: StringsTable = StringsTable::new();
 
 struct StringsTableEntry {
-    hash: u32,
+    hash: usize,
     ptr: *const u8,
     len: usize,
 }
@@ -29,6 +29,8 @@ struct StringsTable {
     data: Array<u8>,
 }
 
+unsafe impl Sync for StringsTable { }
+
 impl Drop for StringsTable {
     fn drop(&mut self) {
         unsafe {
@@ -43,14 +45,14 @@ impl Drop for StringsTable {
 }
 
 impl StringsTable {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             table: RawSet::for_type::<StringsTableEntry>(),
             data: Array::new(),
         }
     }
 
-    fn get_or_add_string(&mut self, hash: u32, bytes: &[u8]) -> StringAtom {
+    fn get_or_add_string(&mut self, hash: usize, bytes: &[u8]) -> StringAtom {
         let mut entry_index = self.table.find_first_index(hash);
         while entry_index != usize::MAX {
             let entry_bytes = unsafe {
@@ -76,11 +78,15 @@ impl StringsTable {
             }
 
             let new_string_ptr = unsafe{ self.data.as_ptr().add(new_string_offset) };
-            entry_index = self.table.insert(StringsTableEntry {
-                hash: hash,
-                ptr: new_string_ptr,
-                len: new_string_len
-            });
+            entry_index = unsafe {
+                self.table.insert_data(hash, |ptr| {
+                    ptr::write(ptr.cast::<StringsTableEntry>(), StringsTableEntry {
+                        hash: hash,
+                        ptr: new_string_ptr,
+                        len: new_string_len
+                    })
+                })
+            };
         }
 
         let entry = unsafe {
@@ -98,20 +104,20 @@ impl StringsTable {
 }
 
 pub struct StringAtom {
-    hash: u32,
+    hash: usize,
     ptr: *const u8,
     len: usize,
 }
 
 impl StringAtom {
-    fn from_str(string: &str) {
+    fn from_str(string: &str) -> Self {
         let string_bytes = string.as_bytes();
-        STRINGS_TABLE.get_or_add_string(fast_hash::fnv_hash(string_bytes), string_bytes)
+        unsafe{ STRINGS_TABLE.get_or_add_string(fast_hash::fnv_hash(string_bytes) as usize, string_bytes) }
     }
 
-    fn new<const N: usize>(string: &[u8; N]) {
-        let hash = fast_hash::fnv_hash_const(string);
-        STRINGS_TABLE.get_or_add_string(hash, string)
+    fn new<const N: usize>(string: &[u8; N]) -> Self {
+        let hash = fast_hash::fnv_hash_const(string) as usize;
+        unsafe{ STRINGS_TABLE.get_or_add_string(hash, string) }
     }
 
     fn as_str(&self) -> &str {

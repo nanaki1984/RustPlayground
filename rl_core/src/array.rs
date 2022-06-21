@@ -13,7 +13,7 @@ pub struct Array<T, A = DefaultAllocator>(RawArray<A>, PhantomData<T>) where
 
 impl<T: Sized + Unpin> Array<T> {
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Array(RawArray::for_type::<T>(), PhantomData)
     }
 
@@ -28,7 +28,7 @@ impl<T, A> Array<T, A> where
     A: AllocatorBase
 {
     #[inline]
-    pub fn custom_allocator() -> Self {
+    pub const fn custom_allocator() -> Self {
         Array(RawArray::<A>::for_type::<T>(), PhantomData)
     }
 
