@@ -1,10 +1,22 @@
 use crate::alloc::DefaultAllocator;
 use crate::fast_hash::{SetItem, fnv_hash, fnv_hash_const};
-use crate::{array::Array, set::Set, map::Map, alloc::InlineAllocator};
+use crate::{array::Array, set::Set, map::Map, alloc::InlineAllocator, strings_table::StringAtom};
+
+#[test]
+fn stringatom_test() {
+    let name0 = StringAtom::new(b"nAMe tESt");
+    let name1 = StringAtom::new(b"Name test");
+    let name2: StringAtom = "name Test".into();
+    assert_eq!(name0, name1);
+    assert_eq!(name0, name2);
+    assert_eq!(name1, name2);
+    assert_eq!(name2.as_str(), "nAMe tESt");
+}
 
 #[test]
 fn fnv_test() {
-    assert_eq!(fnv_hash("Hello world!".as_bytes()), fnv_hash_const(b"Hello world!"));
+    assert_eq!(fnv_hash::<false>("Hello world!".as_bytes()), fnv_hash_const(b"Hello world!", false));
+    assert_eq!(fnv_hash::<true>("hello WORLD!".as_bytes()), fnv_hash_const(b"HeLLo woRLd!", true));
 }
 
 #[test]

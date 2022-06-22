@@ -6,6 +6,7 @@ use std::vec::{Vec};
 use std::time::{Duration, Instant};
 use rl_core::alloc::InlineAllocator;
 use rl_core::array::Array;
+use rl_core::fast_hash::fnv_hash_const;
 use rl_core::map::Map;
 /*
 struct MockRawArray<A : AllocatorBase> {
@@ -175,29 +176,7 @@ fn use_hashmap() {
 
     println!("hashmap {} ms (sum {})", now.elapsed().as_millis(), sum);
 }
-/*
-const fn fnv_hash_impl<const N: usize, const I: usize>(bytes: &[u8; N]) -> u32 {
-    if I == 1 {
-        (2166136261u32 ^ (bytes[0] as u32)) * 16777619u32
-    } else {
-        (fnv_hash_impl::<N, {I - 1}>(bytes) ^ (bytes[I - 1] as u32)) * 16777619u32
-    }
-}
 
-const fn fnv_hash<const N: usize>(bytes: &[u8; N]) -> u32 {
-    //fnv_hash_impl::<N, N>(bytes)
-    let mut hash = 2166136261u32;
-    //for i in 0..N {
-    //    hash = (hash ^ (bytes[i] as u32)) * 16777619u32;
-    //}
-    let mut i = 0;
-    while i < N {
-        hash = u32::wrapping_mul((hash ^ (bytes[i] as u32)), 16777619u32);
-        i += 1;
-    }
-    hash
-}
-*/
 fn main() {
     let ti = TypeInfo::from_type::<TestStruct>();
     //let ti = TestStruct::type_info();

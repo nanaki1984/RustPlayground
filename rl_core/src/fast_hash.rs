@@ -1,18 +1,20 @@
-pub const fn fnv_hash_const<const N: usize>(bytes: &[u8; N]) -> u32 {
+pub const fn fnv_hash_const<const N: usize>(bytes: &[u8; N], lowercase: bool) -> u32 {
     let mut hash = 2166136261u32;
     let mut i = 0;
     while i < N {
-        hash = u32::wrapping_mul(hash ^ (bytes[i] as u32), 16777619u32);
+        let byte = if lowercase { bytes[i].to_ascii_lowercase() } else { bytes[i] } as u32;
+        hash = u32::wrapping_mul(hash ^ byte, 16777619u32);
         i += 1;
     }
     hash
 }
 
-pub fn fnv_hash(bytes: &[u8]) -> u32 {
+pub fn fnv_hash<const LOWERCASE: bool>(bytes: &[u8]) -> u32 {
     let bytes_len = bytes.len();
     let mut hash = 2166136261u32;
     for i in 0..bytes_len {
-        hash = u32::wrapping_mul(hash ^ (bytes[i] as u32), 16777619u32);
+        let byte = if LOWERCASE { bytes[i].to_ascii_lowercase() } else { bytes[i] } as u32;
+        hash = u32::wrapping_mul(hash ^ byte, 16777619u32);
     }
     hash
 }
@@ -49,13 +51,13 @@ impl FastHash for u64 {
 
 impl FastHash for str {
     fn fast_hash(&self) -> usize {
-        fnv_hash(self.as_bytes()) as usize
+        fnv_hash::<false>(self.as_bytes()) as usize
     }
 }
 
 impl FastHash for String {
     fn fast_hash(&self) -> usize {
-        fnv_hash(self.as_bytes()) as usize
+        fnv_hash::<false>(self.as_bytes()) as usize
     }
 }
 
