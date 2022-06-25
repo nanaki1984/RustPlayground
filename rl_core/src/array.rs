@@ -250,3 +250,5 @@ impl<T: Sized + Unpin> Default for Array<T>
         Array::new()
     }
 }
+
+// TODO: FromIterator

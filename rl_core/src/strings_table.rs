@@ -20,6 +20,7 @@ struct StringsTableEntry {
 }
 
 impl StringsTableEntry {
+    #[inline]
     fn new(bytes: &[u8]) -> Self {
         let mut new_entry = StringsTableEntry {
             data: [0; STRINGS_TABLE_ENTRY_MAX_LEN],
@@ -29,10 +30,12 @@ impl StringsTableEntry {
         new_entry
     }
 
+    #[inline]
     unsafe fn as_bytes(&self) -> &[u8] {
         slice::from_raw_parts(self.data.as_ptr(), self.len)
     }
 
+    #[inline]
     unsafe fn as_str(&self) -> &str {
         str::from_utf8_unchecked(self.as_bytes())
     }
@@ -70,6 +73,7 @@ impl StringsTable {
         }
     }
 
+    #[inline]
     fn lazy_init(&mut self) {
         if !self.initialized {
             self.table = MaybeUninit::new(RawSet::for_type::<StringsTableEntry>());
@@ -131,6 +135,7 @@ pub struct StringAtom {
 }
 
 impl StringAtom {
+    #[inline]
     pub const fn none() -> Self {
         Self {
             hash: 0,
@@ -139,15 +144,18 @@ impl StringAtom {
         }
     }
 
+    #[inline]
     pub fn new<const N: usize>(string: &[u8; N]) -> Self {
         let hash = fast_hash::fnv_hash_const(string, true) as usize;
         unsafe{ STRINGS_TABLE.get_or_add_string(hash, string) }
     }
 
+    #[inline]
     pub fn is_none(&self) -> bool {
         self.len == 0
     }
 
+    #[inline]
     pub fn as_str(&self) -> &str {
         if self.len > 0 {
             unsafe{ str::from_utf8_unchecked(slice::from_raw_parts(self.ptr.as_ptr(), self.len)) }
