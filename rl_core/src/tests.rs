@@ -1,6 +1,6 @@
 use crate::alloc::DefaultAllocator;
 use crate::fast_hash::{SetItem, fnv_hash, fnv_hash_const};
-use crate::{array::Array, set::Set, map::Map, alloc::InlineAllocator, strings_table::StringAtom};
+use crate::{array::Array, array::InlineArray, set::Set, map::Map, strings_table::StringAtom};
 
 #[test]
 fn stringatom_test() {
@@ -140,6 +140,6 @@ fn array_test() {
     assert_eq!(array[19], 2);
 
     const INLINE_TEST_SIZE: usize = 4;
-    let inline_array: Array<i32, InlineAllocator<INLINE_TEST_SIZE, i32>> = Array::custom_allocator();
+    let inline_array: InlineArray<i32, INLINE_TEST_SIZE> = Array::custom_allocator();
     assert_eq!(std::mem::size_of_val(&inline_array), std::mem::size_of_val(&array) + std::mem::size_of::<i32>() * INLINE_TEST_SIZE);
 }

@@ -3,9 +3,9 @@ use std::ops::{Index, IndexMut};
 
 use crate::raw_set::RawSetEntry;
 use crate::set::Set;
-use crate::array::Array;
+use crate::array::InlineArray;
 use crate::fast_hash::{SetKey, KeyValuePair, FastHash};
-use crate::alloc::{ArrayAllocator, DefaultAllocator, InlineAllocator};
+use crate::alloc::{ArrayAllocator, DefaultAllocator};
 
 pub struct Map<K, V, DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator, TableAlloc = DefaultAllocator>
 (
@@ -93,7 +93,7 @@ impl<K, V, DataAlloc, EntriesAlloc, TableAlloc> Map<K, V, DataAlloc, EntriesAllo
         K: Borrow<Q>,
         Q: FastHash + Eq
     {
-        let mut pair_array: Array<KeyValuePair<K, V>, InlineAllocator<1, KeyValuePair<K, V>>> = self.0.remove_all(key);
+        let mut pair_array: InlineArray<KeyValuePair<K, V>, 1> = self.0.remove_all(key);
         if pair_array.num() > 0 {
             Option::Some(KeyValuePair::take_value(pair_array.swap_remove(0)))
         } else {

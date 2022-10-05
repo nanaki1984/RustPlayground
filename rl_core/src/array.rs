@@ -4,8 +4,10 @@ use std::marker::PhantomData;
 use std::ops::{Range, Deref, DerefMut, Index, IndexMut};
 use std::slice::{self, SliceIndex};
 
-use crate::alloc::{AllocatorBase, DefaultAllocator};
+use crate::alloc::{AllocatorBase, DefaultAllocator, InlineAllocator};
 use crate::raw_array::RawArray;
+
+pub type InlineArray<T, const N: usize> = Array<T, InlineAllocator<N, T>>;
 
 pub struct Array<T, A = DefaultAllocator>(RawArray<A>, PhantomData<T>) where
     T: Sized + Unpin,
