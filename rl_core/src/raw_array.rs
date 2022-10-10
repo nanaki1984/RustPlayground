@@ -41,12 +41,12 @@ impl<A: AllocatorBase> RawArray<A> {
     }
 
     #[inline]
-    pub fn for_type<T: Sized>() -> Self {
+    pub fn for_type<T>() -> Self {
         unsafe{ Self::for_type_unchecked(Layout::new::<T>()) }
     }
 
     #[inline]
-    pub fn for_type_with_capacity<T: Sized>(capacity: usize) -> Self {
+    pub fn for_type_with_capacity<T>(capacity: usize) -> Self {
         unsafe{ Self::for_type_with_capacity_unchecked(Layout::new::<T>(), capacity) }
     }
 }

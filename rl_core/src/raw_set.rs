@@ -48,12 +48,12 @@ impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableA
     }
 
     #[inline]
-    pub fn for_type<T: Sized>() -> Self {
+    pub fn for_type<T>() -> Self {
         unsafe{ Self::for_type_unchecked(Layout::new::<T>()) }
     }
 
     #[inline]
-    pub fn for_type_with_table_size<T: Sized>(table_size: usize) -> Self {
+    pub fn for_type_with_table_size<T>(table_size: usize) -> Self {
         unsafe{ Self::for_type_with_table_size_unchecked(Layout::new::<T>(), table_size) }
     }
 }

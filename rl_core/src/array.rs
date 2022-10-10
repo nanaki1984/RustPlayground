@@ -10,10 +10,10 @@ use crate::raw_array::RawArray;
 pub type InlineArray<T, const N: usize> = Array<T, InlineAllocator<N, T>>;
 
 pub struct Array<T, A = DefaultAllocator>(RawArray<A>, PhantomData<T>) where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase;
 
-impl<T: Sized + Unpin> Array<T> {
+impl<T: Unpin> Array<T> {
     #[inline]
     pub fn new() -> Self {
         Array(RawArray::for_type::<T>(), PhantomData)
@@ -26,7 +26,7 @@ impl<T: Sized + Unpin> Array<T> {
 }
 
 impl<T, A> Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase
 {
     #[inline]
@@ -41,7 +41,7 @@ impl<T, A> Array<T, A> where
 }
 
 impl<T, A> Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase
 {
     #[inline]
@@ -168,7 +168,7 @@ impl<T, A> Array<T, A> where
 }
 
 impl<T, A> Deref for Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase
 {
     type Target = [T];
@@ -179,7 +179,7 @@ impl<T, A> Deref for Array<T, A> where
 }
 
 impl<T, A> DerefMut for Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase
 {
     fn deref_mut(&mut self) -> &mut [T] {
@@ -188,7 +188,7 @@ impl<T, A> DerefMut for Array<T, A> where
 }
 
 impl<T, A, I> Index<I> for Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase,
     I: SliceIndex<[T]>
 {
@@ -201,7 +201,7 @@ impl<T, A, I> Index<I> for Array<T, A> where
 }
 
 impl<T, A, I> IndexMut<I> for Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase,
     I: SliceIndex<[T]>
 {
@@ -212,7 +212,7 @@ impl<T, A, I> IndexMut<I> for Array<T, A> where
 }
 
 impl<'a, T, A> IntoIterator for &'a Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase
 {
     type Item = &'a T;
@@ -224,7 +224,7 @@ impl<'a, T, A> IntoIterator for &'a Array<T, A> where
 }
 
 impl<'a, T, A> IntoIterator for &'a mut Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase
 {
     type Item = &'a mut T;
@@ -236,7 +236,7 @@ impl<'a, T, A> IntoIterator for &'a mut Array<T, A> where
 }
 
 impl<T, A> Drop for Array<T, A> where
-    T: Sized + Unpin,
+    T: Unpin,
     A: AllocatorBase
 {
     fn drop(&mut self) {
@@ -246,7 +246,7 @@ impl<T, A> Drop for Array<T, A> where
     }
 }
 
-impl<T: Sized + Unpin> Default for Array<T>
+impl<T: Unpin> Default for Array<T>
 {
     fn default() -> Array<T> {
         Array::new()

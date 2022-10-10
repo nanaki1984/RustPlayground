@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 pub const fn fnv_hash_const<const N: usize>(bytes: &[u8; N], lowercase: bool) -> u32 {
     let mut hash = 2166136261u32;
     let mut i = 0;
@@ -61,14 +63,22 @@ impl FastHash for String {
     }
 }
 
+impl FastHash for TypeId {
+    fn fast_hash(&self) -> usize {
+        let t = unsafe { *((self as *const TypeId) as *const u64) };
+        t as usize
+    }
+}
+
 impl SetKey for i32 { }
 impl SetKey for u32 { }
 impl SetKey for i64 { }
 impl SetKey for u64 { }
 impl SetKey for str { }
 impl SetKey for String { }
+impl SetKey for TypeId { }
 
-pub trait SetItem : Sized + Unpin {
+pub trait SetItem : Unpin {
     type KeyType : SetKey;
 
     fn get_key(&self) -> &Self::KeyType;

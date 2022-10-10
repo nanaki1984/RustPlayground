@@ -10,5 +10,8 @@ pub mod set;
 pub mod map;
 // ToDo: multimap
 
+pub mod typed;
+pub mod object;
+
 #[cfg(test)]
 mod tests;

@@ -11,6 +11,7 @@ static mut STRINGS_TABLE: StringsTable = StringsTable::new(); // TODO multithrea
 // would also be nice to have a const new on StringAtom using a 'static &str and keeping that in the entry (no allocation...but gets a lot more complicated)
 // const new for StringAtom is a must because of the mutex to be added (i can keep const StringAtoms around to not create them @ runtime)
 // The mutex in unreal is on shards, not on the whole table (every shard is a table, e.g. shards can be last 4 bits of hash, 16 shards)
+// Don't use mutex, just an array of RwLock<RawSet>
 
 const STRINGS_TABLE_ENTRY_MAX_LEN: usize = 128;
 

@@ -1,4 +1,6 @@
 use std::any::{TypeId, type_name};
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::mem::{size_of, align_of};
@@ -6,7 +8,6 @@ use std::vec::{Vec};
 use std::time::{Duration, Instant};
 use rl_core::alloc::InlineAllocator;
 use rl_core::array::Array;
-use rl_core::fast_hash::fnv_hash_const;
 use rl_core::map::Map;
 /*
 struct MockRawArray<A : AllocatorBase> {
@@ -99,9 +100,9 @@ fn use_vec() {
 
     let mut sum = 0;
     //let mut vec = Vec::new();
-    for i in (0..100) {
+    for i in 0..100 {
         let mut vec = Vec::new();
-        for _ in (0..1000) {
+        for _ in 0..1000 {
             vec.insert(0, i);
             vec.push(i);
         }
@@ -123,9 +124,9 @@ fn use_array() {
 
     let mut sum = 0;
     //let mut array = Array::new();
-    for i in (0..100) {
+    for i in 0..100 {
         let mut array = Array::new();
-        for _ in (0..1000) {
+        for _ in 0..1000 {
             array.insert(0, i);
             array.push_back(i);
         }
