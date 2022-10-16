@@ -251,4 +251,14 @@ impl<A: AllocatorBase> RawArray<A> {
         self.items_num = 0;
         slice_dtor(self.data.as_ptr(), old_items_num);
     }
+
+    pub unsafe fn get_ptr(&self, index: usize) -> *const u8 {
+        debug_assert!(index < self.items_num);
+        self.as_ptr().add(index * self.items_layout.size())
+    }
+
+    pub unsafe fn get_ptr_mut(&mut self, index: usize) -> *mut u8 {
+        debug_assert!(index < self.items_num);
+        self.as_mut_ptr().add(index * self.items_layout.size())
+    }
 }

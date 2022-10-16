@@ -282,4 +282,14 @@ impl<DataAlloc, EntriesAlloc, TableAlloc> RawSet<DataAlloc, EntriesAlloc, TableA
     pub fn get_hash(&self, index: usize) -> usize {
         self.entries[index].hash
     }
+
+    #[inline]
+    pub unsafe fn get_data_ptr(&self, index: usize) -> *const u8 {
+        self.data.get_ptr(index)
+    }
+
+    #[inline]
+    pub unsafe fn get_data_ptr_mut(&mut self, index: usize) -> *mut u8 {
+        self.data.get_ptr_mut(index)
+    }
 }
