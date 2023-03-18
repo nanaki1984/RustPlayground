@@ -154,10 +154,11 @@ impl ObjStorage {
 
         // ToDo: check that there are no objects with same key
 
+        let value_hash = value.get_key().fast_hash();
         let new_entry = ObjStorageEntry::new(value);
         let mut set_write = self.set_lock.write().unwrap();
         unsafe {
-            set_write.insert_data(value.get_key().fast_hash(), |ptr| {
+            set_write.insert_data(value_hash, |ptr| {
                 ptr::write(ptr.cast::<ObjStorageEntry<T>>(), new_entry)
             })
         }
@@ -216,7 +217,7 @@ impl ObjStorage {
 
         None
     }
-
+/*
     pub fn prune(&self)
     {
         let mut set_write = self.set_lock.write().unwrap();
@@ -237,7 +238,7 @@ impl ObjStorage {
                 }
             }
         }
-    }
+    }*/
 }
 
 pub struct ObjHandle<T: Object> { // ToDo: make it an enum, to be able to have "Zero"/Null Handles (also default value)

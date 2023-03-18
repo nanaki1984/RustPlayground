@@ -4,3 +4,4 @@ target/
 */gen
 */target
 Cargo.lock
+*/Cargo.lock

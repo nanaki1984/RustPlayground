@@ -1,228 +1,176 @@
-use std::any::{TypeId, type_name};
-use std::borrow::Borrow;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::mem::{size_of, align_of};
-use std::vec::{Vec};
-use std::time::{Duration, Instant};
-use rl_core::alloc::InlineAllocator;
-use rl_core::array::Array;
-use rl_core::map::Map;
-/*
-struct MockRawArray<A : AllocatorBase> {
-    alloc: A,
-}
+use std::iter;
+use std::time::Instant;
 
-struct MockArray<T, A: ArrayAllocator<T>>(MockRawArray<A>, PhantomData<T>);
+use ::egui::FontDefinitions;
+use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
+use egui_winit_platform::{Platform, PlatformDescriptor};
+use winit::event::Event::*;
+use winit::event_loop::ControlFlow;
+const INITIAL_WIDTH: u32 = 1920;
+const INITIAL_HEIGHT: u32 = 1080;
 
-struct MockArrayContainer {
-    field: MockArray<i32, InlineAllocator<5, i32>>,
-}
-*/
-#[derive(Debug)]
-struct TypeInfo {
-    id: TypeId,
-    name: &'static str,
-    size: usize,
-    align: usize,
-}
-
-impl TypeInfo {
-    /*const*/ fn from_type<T>() -> TypeInfo
-        where T : 'static + Sized
-    {
-        TypeInfo {
-            id: TypeId::of::<T>(),
-            name: type_name::<T>(),
-            size: size_of::<T>(),
-            align: align_of::<T>(),
-        }
-    }
-}
-
-trait Typed {
-    fn type_info() -> &'static TypeInfo;
-}
-
-#[repr(align(16))]
-#[derive(Debug)]
-struct TestStruct
-{
-    x: f32,
-    y: f32,
-    z: f32,
-    w: f32,
-    s: f32,
-}
-
-impl TestStruct {
-    const fn test<const FLAG: bool>() -> &'static str
-    {
-        if FLAG {
-            "True"
-        } else {
-            "False"
-        }
-    }
-
-    fn add(&self, other: &TestStruct) -> TestStruct
-    {
-        TestStruct {
-            x: self.x + other.x,
-            y: self.y + other.y,
-            z: self.z + other.z,
-            w: self.w + other.w,
-            s: self.s + other.s,
-        }
-    }
-}
-
-/*
-impl Typed for TestStruct {
-    fn type_info() -> &'static TypeInfo {
-        static ti: TypeInfo = TypeInfo::from_type::<TestStruct>();
-        return &ti;
-    }
-}
-*/
-struct TestStruct2(&'static str);
-
-impl Drop for TestStruct2 {
-    fn drop(&mut self) {
-        println!("{}", self.0);
-    }
-}
-
-#[inline(never)]
-fn use_vec() {
-    let now = Instant::now();
-
-    let mut sum = 0;
-    //let mut vec = Vec::new();
-    for i in 0..100 {
-        let mut vec = Vec::new();
-        for _ in 0..1000 {
-            vec.insert(0, i);
-            vec.push(i);
-        }
-        // TODO: why into_iter "consumes" vec?! it's a version w/out lifetime of vec
-        //sum += vec.into_iter().sum::<i32>();
-        sum += vec.iter().sum::<i32>();
-        //for j in 0..vec.len() {
-        //    sum += vec[j];
-        //}
-        //vec.clear();
-    }
-
-    println!("vec {} ms (sum {})", now.elapsed().as_millis(), sum);
-}
-
-#[inline(never)]
-fn use_array() {
-    let now = Instant::now();
-
-    let mut sum = 0;
-    //let mut array = Array::new();
-    for i in 0..100 {
-        let mut array = Array::new();
-        for _ in 0..1000 {
-            array.insert(0, i);
-            array.push_back(i);
-        }
-        sum += array.iter().sum::<i32>();
-        //for j in 0..array.num() {
-        //    sum += array[j];
-        //}
-        //array.clear();
-    }
-
-    println!("array {} ms (sum {})", now.elapsed().as_millis(), sum);
-}
-
-fn use_map() {
-    let now = Instant::now();
-
-    let mut map = Map::new();
-    for i in 0..100000 {
-    //for i in 0..1000000 {
-        map.insert(i.to_string(), i);
-        //map.insert(i, i % 2);
-    }
-    let mut sum = 0;
-    for i in 0..100000 {
-    //for i in 0..1000000 {
-        sum += map[&i.to_string()];
-        //sum += map[&i];
-    }
-
-    println!("map {} ms (sum {})", now.elapsed().as_millis(), sum);
-}
-
-fn use_hashmap() {
-    let now = Instant::now();
-
-    let mut hashmap = HashMap::new();
-    for i in 0..100000 {
-    //for i in 0..1000000 {
-        hashmap.insert(i.to_string(), i);
-        //hashmap.insert(i, i % 2);
-    }
-    let mut sum = 0;
-    for i in 0..100000 {
-    //for i in 0..1000000 {
-        sum += hashmap[&i.to_string()];
-        //sum += hashmap[&i];
-    }
-
-    println!("hashmap {} ms (sum {})", now.elapsed().as_millis(), sum);
-}
-
+/// A simple egui + wgpu + winit based example.
 fn main() {
-    let ti = TypeInfo::from_type::<TestStruct>();
-    //let ti = TestStruct::type_info();
-    println!("Hello, world!");
-    println!("{ti:?}");
-    println!("True is {}, False is {}", TestStruct::test::<true>(), TestStruct::test::<false>());
+    let event_loop = winit::event_loop::EventLoopBuilder::new().build();
+    let window = winit::window::WindowBuilder::new()
+        .with_decorations(true)
+        .with_resizable(true)
+        .with_transparent(false)
+        .with_title("egui-wgpu_winit example")
+        .with_inner_size(winit::dpi::PhysicalSize {
+            width: INITIAL_WIDTH,
+            height: INITIAL_HEIGHT,
+        })
+        .build(&event_loop)
+        .unwrap();
 
-    let v0 = TestStruct { x: 1.0, y: 1.0, z: 2.0, w: 2.0, s: 0.0 };
-    let v1 = TestStruct { x: 3.0, y: 3.0, z: 3.0, w: 4.0, s: 0.0 };
-    let v2 = v0.add(&v1);
+    let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+    let surface = unsafe { instance.create_surface(&window) };
 
-    println!("{v2:?}");
+    // WGPU 0.11+ support force fallback (if HW implementation not supported), set it to true or false (optional).
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        compatible_surface: Some(&surface),
+        force_fallback_adapter: false,
+    }))
+    .unwrap();
 
-    let mut array = Array::new();
-    array.push_back(TestStruct2("Hello"));
-    array.push_back(TestStruct2("World"));
+    let (device, queue) = pollster::block_on(adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            features: wgpu::Features::default(),
+            limits: wgpu::Limits::default(),
+            label: None,
+        },
+        None,
+    ))
+    .unwrap();
 
-    // test assert
-    //array.remove(2);
+    let size = window.inner_size();
+    let surface_format = surface.get_supported_formats(&adapter)[0];
+    let mut surface_config = wgpu::SurfaceConfiguration {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format: surface_format,
+        width: size.width as u32,
+        height: size.height as u32,
+        present_mode: wgpu::PresentMode::Fifo,
+    };
+    surface.configure(&device, &surface_config);
 
-    let mut string = "".to_string();
-    for tmp in &array {
-        string += tmp.0;
-    }
-    println!("{}", string);
+    // We use the egui_winit_platform crate as the platform.
+    let mut platform = Platform::new(PlatformDescriptor {
+        physical_width: size.width as u32,
+        physical_height: size.height as u32,
+        scale_factor: window.scale_factor(),
+        font_definitions: FontDefinitions::default(),
+        style: Default::default(),
+    });
 
-    let world = array.swap_remove(1);
-    println!("BeforeClear");
-    array.clear();
-    drop(world);
-    println!("AfterClear");
-    drop(array);
+    // We use the egui_wgpu_backend crate as the render backend.
+    let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
 
-    println!("TestStruct2 size: {}", std::mem::size_of::<TestStruct2>());
-    let mut inline_array: Array<TestStruct2, InlineAllocator<4, TestStruct2>> = Array::custom_allocator();
-    inline_array.push_back(TestStruct2("One"));
-    inline_array.push_back(TestStruct2("Two"));
-    inline_array.push_back(TestStruct2("Three"));
-    inline_array.push_back(TestStruct2("Four"));
-    //inline_array.push_back(TestStruct2("Five"));
+    let start_time = Instant::now();
+    event_loop.run(move |event, _, control_flow| {
+        // Pass the winit events to the platform integration.
+        platform.handle_event(&event);
 
-    // call to find them in asm
-    use_array();
-    use_vec();
+        match event {
+            RedrawRequested(..) => {
+                platform.update_time(start_time.elapsed().as_secs_f64());
 
-    use_map();
-    use_hashmap();
+                let output_frame = match surface.get_current_texture() {
+                    Ok(frame) => frame,
+                    Err(wgpu::SurfaceError::Outdated) => {
+                        // This error occurs when the app is minimized on Windows.
+                        // Silently return here to prevent spamming the console with:
+                        // "The underlying surface has changed, and therefore the swap chain must be updated"
+                        return;
+                    }
+                    Err(e) => {
+                        eprintln!("Dropped frame with error: {}", e);
+                        return;
+                    }
+                };
+                let output_view = output_frame
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+
+                // Begin to draw the UI frame.
+                platform.begin_frame();
+
+                // A simple UI
+                egui::Window::new("Window").show(&platform.context(), |ui| {
+                    ui.label("Hello world!");
+                    ui.label("See https://github.com/emilk/egui for how to make other UI elements");
+                });
+
+                // End the UI frame. We could now handle the output and draw the UI with the backend.
+                let full_output = platform.end_frame(Some(&window));
+                let paint_jobs = platform.context().tessellate(full_output.shapes);
+
+                let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("encoder"),
+                });
+
+                // Upload all resources for the GPU.
+                let screen_descriptor = ScreenDescriptor {
+                    physical_width: surface_config.width,
+                    physical_height: surface_config.height,
+                    scale_factor: window.scale_factor() as f32,
+                };
+                let tdelta: egui::TexturesDelta = full_output.textures_delta;
+                egui_rpass
+                    .add_textures(&device, &queue, &tdelta)
+                    .expect("add texture ok");
+                egui_rpass.update_buffers(&device, &queue, &paint_jobs, &screen_descriptor);
+
+                // Record all render passes.
+                egui_rpass
+                    .execute(
+                        &mut encoder,
+                        &output_view,
+                        &paint_jobs,
+                        &screen_descriptor,
+                        // Set this to `None` to overlay the UI on top of what's in the framebuffer
+                        None,//Some(wgpu::Color::BLACK),
+                    )
+                    .unwrap();
+                // Submit the commands.
+                queue.submit(iter::once(encoder.finish()));
+
+                // Redraw egui
+                output_frame.present();
+
+                egui_rpass
+                    .remove_textures(tdelta)
+                    .expect("remove texture ok");
+
+                // Support reactive on windows only, but not on linux.
+                // if _output.needs_repaint {
+                //     *control_flow = ControlFlow::Poll;
+                // } else {
+                //     *control_flow = ControlFlow::Wait;
+                // }
+            }
+            MainEventsCleared => {
+                window.request_redraw();
+            }
+            WindowEvent { event, .. } => match event {
+                winit::event::WindowEvent::Resized(size) => {
+                    // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
+                    // See: https://github.com/rust-windowing/winit/issues/208
+                    // This solves an issue where the app would panic when minimizing on Windows.
+                    if size.width > 0 && size.height > 0 {
+                        surface_config.width = size.width;
+                        surface_config.height = size.height;
+                        surface.configure(&device, &surface_config);
+                    }
+                }
+                winit::event::WindowEvent::CloseRequested => {
+                    *control_flow = ControlFlow::Exit;
+                }
+                _ => {}
+            },
+            _ => (),
+        }
+    });
 }

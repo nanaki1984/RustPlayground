@@ -35,6 +35,6 @@ impl TypeInfo {
     }
 
     pub fn drop_in_place(&self, ptr: *mut u8) {
-        (self.drop_in_place_fn)(ptr);
+        (self.prune_fn)(ptr);
     }
 }
