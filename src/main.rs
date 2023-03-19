@@ -21,7 +21,7 @@ use vulkano::{
             vertex_input::BuffersDefinition,
             viewport::{Viewport, ViewportState},
         },
-        GraphicsPipeline,
+        GraphicsPipeline, ComputePipeline,
     },
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
     sync::GpuFuture,
@@ -32,7 +32,7 @@ use vulkano_util::{
     window::{VulkanoWindows, WindowDescriptor},
 };
 use winit::{
-    event::{Event, WindowEvent},
+    event::{Event, WindowEvent, ElementState},
     event_loop::{ControlFlow, EventLoop},
 };
 
@@ -68,17 +68,6 @@ pub fn main() {
             ..Default::default()
         },
     );
-    // Create gui subpass
-    /*let mut gui = Gui::new_with_subpass(
-        &event_loop,
-        windows.get_primary_renderer_mut().unwrap().surface(),
-        windows.get_primary_renderer_mut().unwrap().graphics_queue(),
-        gui_pipeline.gui_pass(),
-        GuiConfig {
-            preferred_format: Some(vulkano::format::Format::B8G8R8A8_SRGB),
-            ..Default::default()
-        },
-    );*/
 
     // Create gui state (pass anything your state requires)
     event_loop.run(move |event, _, control_flow| {
@@ -109,8 +98,26 @@ pub fn main() {
                     WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit;
                     }
+                    WindowEvent::Focused(focused) => {
+                        if focused {
+                            info!("*** Have focus");
+                        } else {
+                            info!("*** Lost focus");
+                        }
+                    }
+                    WindowEvent::KeyboardInput { device_id: _, input, is_synthetic: _ } => {
+                        let keycode = input.scancode;
+                        let state = input.state == ElementState::Pressed;
+                        info!("{keycode}: {state}");
+                    }
                     _ => (),
                 }
+            }
+            Event::Suspended => {
+                info!("*** Suspended");
+            }
+            Event::Resumed => {
+                info!("*** Resumed");
             }
             Event::RedrawRequested(window_id) if !gui_pipeline.minimized && window_id == window_id => {
                 // Set immediate UI in redraw here
@@ -147,17 +154,22 @@ pub fn main() {
                 });
 
                 // Render
+
                 // Acquire swapchain future
                 let before_future = renderer.acquire().unwrap();
+
                 // Render scene
+                // rendering done in gui_pipeline.render...
 
                 // Render gui
                 let after_future =
                     gui_pipeline.render(before_future, renderer.swapchain_image_view(), &mut gui);
+
                 // Present swapchain
                 renderer.present(after_future, true);
             }
             Event::MainEventsCleared => {
+                // Send request_redraw to render a new frame regardless
                 renderer.window().request_redraw();
             }
             _ => (),
@@ -169,7 +181,6 @@ struct SimpleGuiPipeline {
     queue: Arc<Queue>,
     render_pass: Arc<RenderPass>,
     pipeline: Arc<GraphicsPipeline>,
-    //subpass: Subpass,
     vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     minimized: bool,
@@ -182,8 +193,6 @@ impl SimpleGuiPipeline {
         allocator: &StandardMemoryAllocator,
     ) -> Self {
         let render_pass = Self::create_render_pass(queue.device().clone(), image_format);
-        /*let (pipeline, subpass) =
-            Self::create_pipeline(queue.device().clone(), render_pass.clone());*/
         let pipeline = Self::create_pipeline(queue.device().clone(), render_pass.clone());
 
         let vertex_buffer = {
@@ -220,19 +229,13 @@ impl SimpleGuiPipeline {
                     samples: SampleCount::Sample1,
                 }
             },
-            passes: [/*
-                { color: [color], depth_stencil: {}, input: [] }, // Draw what you want on this pass
-                { color: [color], depth_stencil: {}, input: [] } // Gui render pass*/
+            passes: [
                 { color: [color], depth_stencil: {}, input: [] } // Single pass
             ]
         )
         .unwrap()
     }
-/*
-    fn gui_pass(&self) -> Subpass {
-        Subpass::from(self.render_pass.clone(), 1).unwrap()
-    }
-*/
+
     fn create_pipeline(
         device: Arc<Device>,
         render_pass: Arc<RenderPass>,
@@ -253,24 +256,44 @@ impl SimpleGuiPipeline {
             })
             .build(device)
             .unwrap()
-/*
-        let subpass = Subpass::from(render_pass, 0).unwrap();
-        (
-            GraphicsPipeline::start()
-                .vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
-                .vertex_shader(vs.entry_point("main").unwrap(), ())
-                .input_assembly_state(InputAssemblyState::new())
-                .fragment_shader(fs.entry_point("main").unwrap(), ())
-                .viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
-                .render_pass(subpass.clone())
-                .multisample_state(MultisampleState {
-                    rasterization_samples: SampleCount::Sample1,
-                    ..Default::default()
-                })
-                .build(device)
-                .unwrap(),
-            subpass,
-        )*/
+    }
+
+    fn create_compute_pipeline(device: Arc<Device>) -> Arc<ComputePipeline> {
+        let pipeline = {
+            mod cs {
+                vulkano_shaders::shader! {
+                    ty: "compute",
+                    src: r"
+                        #version 450
+                        layout(constant_id = 0) const int multiple = 12;
+                        layout(constant_id = 1) const int workgroup_size = 64;
+                        layout(local_size_x = workgroup_size, local_size_y = 1, local_size_z = 1) in;
+                        layout(set = 0, binding = 0) buffer Data {
+                            uint data[];
+                        };
+                        void main() {
+                            uint idx = gl_GlobalInvocationID.x;
+                            data[idx] *= multiple;
+                        }
+                    ",
+                }
+            }
+
+            let shader = cs::load(device.clone()).unwrap();
+            let spec_consts = cs::SpecializationConstants {
+                multiple: 12,
+                workgroup_size: 64,
+            };
+            ComputePipeline::new(
+                device.clone(),
+                shader.entry_point("main").unwrap(),
+                &spec_consts,
+                None,
+                |_| {},
+            )
+            .unwrap()
+        };
+        pipeline        
     }
 
     pub fn render(
@@ -346,7 +369,7 @@ impl SimpleGuiPipeline {
                 SubpassContents::SecondaryCommandBuffers,
             )
             .unwrap();
-*//*
+
         // Render first draw pass
         let mut secondary_builder = AutoCommandBufferBuilder::secondary(
             &self.command_buffer_allocator,
@@ -376,13 +399,7 @@ impl SimpleGuiPipeline {
         // Draw gui on subpass
         let cb = gui.draw_on_subpass_image(dimensions);
         builder.execute_commands(cb).unwrap();
-*//*
-        // Last end render pass
-        builder.end_render_pass().unwrap();
-        let command_buffer = builder.build().unwrap();
-        let after_future = before_future.then_execute(self.queue.clone(), command_buffer).unwrap();
-
-        after_future.boxed()*/
+*/
     }
 }
 
