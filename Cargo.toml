@@ -6,11 +6,23 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rl_core = { path = "rl_core" }
-egui_wgpu_backend = "0.19"
-pollster = "0.2"
-egui = "0.19"
-epi = "0.17"
-egui_winit_platform = "0.16"
-wgpu = "0.13"
-winit = { version="0.27.3" }
+# rl_core = { path = "rl_core" }
+# egui_wgpu_backend = "0.19"
+# pollster = "0.2"
+# egui = "0.19"
+# epi = "0.17"
+# egui_winit_platform = "0.16"
+# wgpu = "0.13"
+# winit = { version="0.27.3" }
+vulkano = "0.32"
+vulkano-util = "0.32"
+vulkano-shaders = "0.32"
+# vulkano-win = "0.32"
+egui = "0.20"
+egui_winit_vulkano = "0.23"
+egui_logger = "0.2.3"
+# winit 0.28 gives compile errors!
+# winit = "0.28"
+winit = "0.27.5"
+bytemuck = "1.13"
+log = "0.4"
