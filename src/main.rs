@@ -266,23 +266,31 @@ impl SimpleGuiPipeline {
                     src: r"
                         #version 450
                         layout(constant_id = 0) const int multiple = 12;
-                        layout(constant_id = 1) const int workgroup_size = 64;
-                        layout(local_size_x = workgroup_size, local_size_y = 1, local_size_z = 1) in;
+                        layout(local_size_x = GROUP_X, local_size_y = 1, local_size_z = 1) in;
                         layout(set = 0, binding = 0) buffer Data {
                             uint data[];
+                        };
+                        struct SDFShape {
+                            vec4 halfSizeAndSoftRadius;
+                        };
+                        layout(set = 0, binding = 1) readonly buffer Shapes {
+                            SDFShape shapes[];
                         };
                         void main() {
                             uint idx = gl_GlobalInvocationID.x;
                             data[idx] *= multiple;
                         }
                     ",
+                    define: [
+                        ("GROUP_X", "64")
+                    ],
+                    //dump: true,
                 }
             }
 
             let shader = cs::load(device.clone()).unwrap();
             let spec_consts = cs::SpecializationConstants {
                 multiple: 12,
-                workgroup_size: 64,
             };
             ComputePipeline::new(
                 device.clone(),
