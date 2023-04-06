@@ -43,6 +43,11 @@ impl AABB {
     }
 
     #[inline]
+    pub fn size(&self) -> Vec3 {
+        self.max - self.min
+    }
+
+    #[inline]
     pub fn intersects(&self, other: &AABB) -> bool {
         //all(&less_than_equal(&self.min, &other.max)) && all(&greater_than_equal(&self.max, &other.min))
         self.min <= other.max && self.max >= other.min
