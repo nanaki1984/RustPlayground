@@ -71,6 +71,14 @@ impl SDFPrimitive {
             group_id,
         }
     }
+
+    pub fn get_shape(&self) -> &SDFShape {
+        &self.shape
+    }
+
+    pub fn get_inv_xform(&self) -> &Mat3x4 {
+        &self.inv_xform
+    }
 }
 
 #[derive(Default)]
