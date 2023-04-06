@@ -4,8 +4,8 @@ use crate::VEC3_ONE;
 
 #[derive(Clone)]
 pub struct AABB {
-    min: Vec3,
-    max: Vec3,
+    pub min: Vec3,
+    pub max: Vec3,
 }
 
 impl AABB {
@@ -67,9 +67,11 @@ impl AABB {
     }
 
     #[inline]
-    pub fn expand(&mut self, amount: f32) {
-        self.min -= VEC3_ONE * amount;
-        self.max += VEC3_ONE * amount;
+    pub fn expand(&self, amount: f32) -> AABB {
+        Self {
+            min: self.min - VEC3_ONE * amount,
+            max: self.max + VEC3_ONE * amount,
+        }
     }
 
     #[inline]

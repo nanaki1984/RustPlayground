@@ -98,4 +98,8 @@ impl SDFPrimitivesList {
     pub fn sort_by_group_id(&mut self) {
         self.primitives.sort_by(|prim0, prim1| { prim0.group_id.cmp(&prim1.group_id) });
     }
+
+    pub fn clear(&mut self) {
+        self.primitives.clear()
+    }
 }
