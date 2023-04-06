@@ -2,6 +2,7 @@ use nalgebra_glm::{Vec3, Vec4, Mat3x4, min2, max2};//, all, less_than_equal, gre
 
 use crate::VEC3_ONE;
 
+#[derive(Clone)]
 pub struct AABB {
     min: Vec3,
     max: Vec3,

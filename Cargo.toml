@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rl_core = { path = "rl_core" }
+rl_math = { path = "rl_math" }
 rl_render = { path = "rl_render" }
 # egui_wgpu_backend = "0.19"
 # pollster = "0.2"

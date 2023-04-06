@@ -246,11 +246,39 @@ impl<T, A> Drop for Array<T, A> where
     }
 }
 
+impl<T, A> FromIterator<T> for Array<T, A> where
+    T: Unpin,
+    A: AllocatorBase
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut iter = iter.into_iter();
+        let (lower, _) = iter.size_hint();
+        let mut new_array = Self::custom_allocator_with_capacity(lower);
+        while let Some(x) = iter.next() {
+            new_array.push_back(x);
+        }
+        new_array        
+    }
+}
+
+impl<'a, T, A> FromIterator<&'a T> for Array<T, A> where
+    T: Unpin + Clone,
+    A: AllocatorBase
+{
+    fn from_iter<I: IntoIterator<Item = &'a T>>(iter: I) -> Self {
+        let mut iter = iter.into_iter();
+        let (lower, _) = iter.size_hint();
+        let mut new_array = Self::custom_allocator_with_capacity(lower);
+        while let Some(x) = iter.next() {
+            new_array.push_back(x.clone());
+        }
+        new_array        
+    }
+}
+
 impl<T: Unpin> Default for Array<T>
 {
     fn default() -> Array<T> {
         Array::new()
     }
 }
-
-// TODO: FromIterator
