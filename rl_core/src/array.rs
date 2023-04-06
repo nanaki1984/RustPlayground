@@ -5,7 +5,7 @@ use std::ops::{Range, Deref, DerefMut, Index, IndexMut};
 use std::slice::{self, SliceIndex};
 
 use crate::alloc::{AllocatorBase, DefaultAllocator, InlineAllocator};
-use crate::raw_array::RawArray;
+use crate::RawArray;
 
 pub type InlineArray<T, const N: usize> = Array<T, InlineAllocator<N, T>>;
 

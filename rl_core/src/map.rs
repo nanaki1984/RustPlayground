@@ -1,10 +1,10 @@
 use std::borrow::Borrow;
 use std::ops::{Index, IndexMut};
 
-use crate::raw_set::RawSetEntry;
-use crate::set::Set;
-use crate::array::InlineArray;
-use crate::fast_hash::{SetKey, KeyValuePair, FastHash};
+use crate::RawSetEntry;
+use crate::Set;
+use crate::InlineArray;
+use crate::{SetKey, KeyValuePair, FastHash};
 use crate::alloc::{ArrayAllocator, DefaultAllocator};
 
 pub struct Map<K, V, DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator, TableAlloc = DefaultAllocator>

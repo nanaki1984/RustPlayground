@@ -1,6 +1,6 @@
 use crate::alloc::DefaultAllocator;
-use crate::fast_hash::{SetItem, fnv_hash, fnv_hash_const};
-use crate::{array::Array, array::InlineArray, set::Set, map::Map, strings_table::StringAtom};
+use crate::{SetItem, fnv_hash, fnv_hash_const};
+use crate::{Array, InlineArray, Set, Map, strings_table::StringAtom};
 
 #[test]
 fn stringatom_test() {

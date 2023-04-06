@@ -1,8 +1,8 @@
 use std::alloc::Layout;
 
 use crate::alloc::{AllocatorBase, ArrayAllocator, DefaultAllocator};
-use crate::raw_array::RawArray;
-use crate::array::Array;
+use crate::RawArray;
+use crate::Array;
 
 #[derive(Copy, Clone)]
 pub struct RawSetEntry {
@@ -12,7 +12,7 @@ pub struct RawSetEntry {
     next: usize,
 }
 
-pub(crate) struct RawSet<DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator, TableAlloc = DefaultAllocator> where
+pub struct RawSet<DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator, TableAlloc = DefaultAllocator> where
     DataAlloc: AllocatorBase,
     EntriesAlloc: ArrayAllocator<RawSetEntry>,
     TableAlloc: ArrayAllocator<usize>

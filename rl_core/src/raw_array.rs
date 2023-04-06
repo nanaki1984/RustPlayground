@@ -5,7 +5,7 @@ use std::ops::Range;
 
 use crate::alloc::{AllocatorBase, DefaultAllocator};
 
-pub(crate) struct RawArray<A = DefaultAllocator> where A: AllocatorBase {
+pub struct RawArray<A = DefaultAllocator> where A: AllocatorBase {
     data: NonNull<u8>,
     items_layout: Layout,
     items_num: usize,

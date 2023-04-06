@@ -5,9 +5,9 @@ use std::sync::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::borrow::Borrow;
 
-use crate::raw_set::RawSet;
+use crate::RawSet;
 use crate::typed::TypeInfo;
-use crate::fast_hash::{FastHash, SetItem};
+use crate::{FastHash, SetItem};
 
 struct ObjBorrowState(AtomicUsize);
 

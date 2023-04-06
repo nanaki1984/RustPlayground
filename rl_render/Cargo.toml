@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 nalgebra-glm = "0.18"
+rl_core = { path = "../rl_core" }
 rl_math = { path = "../rl_math" }

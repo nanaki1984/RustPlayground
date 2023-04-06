@@ -7,10 +7,10 @@ use std::option::Option;
 use std::borrow::Borrow;
 
 use crate::alloc::{AllocatorBase, DefaultAllocator, ArrayAllocator};
-use crate::fast_hash::{SetItem, FastHash};
-use crate::raw_set::RawSet;
-use crate::raw_set::RawSetEntry;
-use crate::array::Array;
+use crate::{SetItem, FastHash};
+use crate::RawSet;
+use crate::RawSetEntry;
+use crate::Array;
 
 pub struct Set<T, DataAlloc = DefaultAllocator, EntriesAlloc = DefaultAllocator, TableAlloc = DefaultAllocator>
 (

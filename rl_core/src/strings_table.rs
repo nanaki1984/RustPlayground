@@ -4,8 +4,8 @@ use std::str;
 use std::ptr::{self, NonNull};
 use std::mem::MaybeUninit;
 
-use crate::fast_hash::{self, FastHash, SetKey};
-use crate::raw_set::RawSet;
+use crate::{fnv_hash_const, fnv_hash, FastHash, SetKey};
+use crate::RawSet;
 
 static mut STRINGS_TABLE: StringsTable = StringsTable::new(); // TODO multithreaded access (just use a mutex...)
 // would also be nice to have a const new on StringAtom using a 'static &str and keeping that in the entry (no allocation...but gets a lot more complicated)
@@ -147,7 +147,7 @@ impl StringAtom {
 
     #[inline]
     pub fn new<const N: usize>(string: &[u8; N]) -> Self {
-        let hash = fast_hash::fnv_hash_const(string, true) as usize;
+        let hash = fnv_hash_const(string, true) as usize;
         unsafe{ STRINGS_TABLE.get_or_add_string(hash, string) }
     }
 
@@ -197,7 +197,7 @@ impl SetKey for StringAtom { }
 impl From<&str> for StringAtom {
     fn from(string: &str) -> Self {
         let string_bytes = string.as_bytes();
-        unsafe{ STRINGS_TABLE.get_or_add_string(fast_hash::fnv_hash::<true>(string_bytes) as usize, string_bytes) }
+        unsafe{ STRINGS_TABLE.get_or_add_string(fnv_hash::<true>(string_bytes) as usize, string_bytes) }
     }
 }
 
