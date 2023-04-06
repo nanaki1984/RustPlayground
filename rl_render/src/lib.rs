@@ -8,4 +8,15 @@ mod globalsdf;
 
 pub use globalsdf::GlobalSDFCascade;
 
+mod globalsdf_cs {
+    vulkano_shaders::shader! {
+        ty: "compute",
+        path: "./src/shaders/globalsdf_write_chunk.glsl",
+        define: [
+            ("GROUP_SIZE", "4")
+        ],
+        //dump: true,
+    }
+}
+
 //mod sdfscene;

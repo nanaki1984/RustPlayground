@@ -53,7 +53,7 @@ impl GlobalSDFCascade {
         let first_chunk_center = aabb.min + VEC3_ONE * half_chunk_size;
 
         let mut chunks = InlineArray::<GlobalSDFChunk, GLOBALSDF_CHUNKS_NUM>::custom_allocator();
-        for i in (0..GLOBALSDF_CHUNKS_NUM) {
+        for i in 0..GLOBALSDF_CHUNKS_NUM {
             let chunk_x = i % GLOBALSDF_CHUNKS_PER_SIDE;
             let chunk_y = (i / GLOBALSDF_CHUNKS_PER_SIDE) % GLOBALSDF_CHUNKS_PER_SIDE;
             let chunk_z = i / (GLOBALSDF_CHUNKS_PER_SIDE * GLOBALSDF_CHUNKS_PER_SIDE);

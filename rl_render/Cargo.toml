@@ -8,5 +8,7 @@ edition = "2021"
 [dependencies]
 nalgebra-glm = "0.18"
 # rayon = "1.7"
+vulkano = "0.32"
+vulkano-shaders = "0.32"
 rl_core = { path = "../rl_core" }
 rl_math = { path = "../rl_math" }
