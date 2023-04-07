@@ -282,3 +282,5 @@ impl<T: Unpin> Default for Array<T>
         Array::new()
     }
 }
+
+// TODO: into_iter() does not do what is expected! should consume the array

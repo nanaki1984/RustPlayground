@@ -1,6 +1,5 @@
-use nalgebra_glm::{Vec3, Vec4, Mat3x4, min2, max2};//, all, less_than_equal, greater_than_equal};
-
-use crate::VEC3_ONE;
+use nalgebra_glm::{Vec3, Vec4, Mat4x3, min2, max2};//, all, less_than_equal, greater_than_equal};
+use crate::{VEC3_ONE, transform_vec4};
 
 #[derive(Clone)]
 pub struct AABB {
@@ -75,14 +74,15 @@ impl AABB {
     }
 
     #[inline]
-    pub fn transform(&self, xform: &Mat3x4) -> AABB {
+    pub fn transform(&self, xform: &Mat4x3) -> AABB {
         let mut new_aabb = Self::new();
         for i in 0..7 {
-            new_aabb.encapsulate_point(&(xform * Vec4::new(
-                if 1 == (i & 1) { self.min.x } else { self.max.x },
-                if 2 == (i & 2) { self.min.y } else { self.max.y },
-                if 4 == (i & 4) { self.min.z } else { self.max.z },
-                1.0)));
+            new_aabb.encapsulate_point(
+                &transform_vec4(xform, &Vec4::new(
+                    if 1 == (i & 1) { self.min.x } else { self.max.x },
+                    if 2 == (i & 2) { self.min.y } else { self.max.y },
+                    if 4 == (i & 4) { self.min.z } else { self.max.z },
+                    1.0)));
         }
         new_aabb
     }

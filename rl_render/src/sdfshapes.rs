@@ -1,6 +1,7 @@
-use nalgebra_glm::{Vec3, Mat3x4, Mat4x4, inverse};
+use nalgebra_glm::{Vec3, Mat4x3, Mat4x4, inverse};
 use rl_core::Array;
 use rl_math::{AABB, VEC3_ZERO, VEC3_ONE, VEC3_HALF};
+use crate::cs_globalsdf::ty::SDFPrimitive as SDFPrimitiveGPU;
 
 #[derive(Clone)]
 pub enum SDFShape {
@@ -30,26 +31,25 @@ impl SDFShape {
 pub struct SDFPrimitive {
     shape: SDFShape,
 
-    xform: Mat3x4, // TODO: this is redundant, I could remove it
-    inv_xform: Mat3x4,
+    inv_xform: Mat4x3,
     aabb: AABB,
 
     distance_scaling_factor: f32,
 
-    group_id: usize,
+    group_id: u32,
 }
 
 impl SDFPrimitive {
-    pub fn new(shape: SDFShape, transform: &Mat4x4, group_id: usize) -> Self {
+    pub fn new(shape: SDFShape, transform: &Mat4x4, group_id: u32) -> Self {
         let inv_transform = inverse(transform);
-        let xform = Mat3x4::from_rows(
-            &[transform.row(0)
-            , transform.row(1)
-            , transform.row(2)]);
-        let inv_xform = Mat3x4::from_rows(
-            &[inv_transform.row(0)
-            , inv_transform.row(1)
-            , inv_transform.row(2)]);
+        let xform = Mat4x3::from_columns(
+            &[transform.column(0)
+            , transform.column(1)
+            , transform.column(2)]);
+        let inv_xform = Mat4x3::from_columns(
+            &[inv_transform.column(0)
+            , inv_transform.column(1)
+            , inv_transform.column(2)]);
 
         let aabb = shape.get_local_aabb().transform(&xform);
 
@@ -62,7 +62,6 @@ impl SDFPrimitive {
         Self {
             shape,
 
-            xform,
             inv_xform,
             aabb,
 
@@ -76,8 +75,16 @@ impl SDFPrimitive {
         &self.shape
     }
 
-    pub fn get_inv_xform(&self) -> &Mat3x4 {
+    pub fn get_inv_xform(&self) -> &Mat4x3 {
         &self.inv_xform
+    }
+
+    pub fn get_dist_scaling_factor(&self) -> f32 {
+        self.distance_scaling_factor
+    }
+
+    pub fn get_group_id(&self) -> u32 {
+        self.group_id
     }
 }
 
@@ -87,7 +94,7 @@ pub struct SDFPrimitivesList {
 }
 
 impl SDFPrimitivesList {
-    pub fn add(&mut self, shape: SDFShape, transform: &Mat4x4, group_id: usize) {
+    pub fn add(&mut self, shape: SDFShape, transform: &Mat4x4, group_id: u32) {
         self.primitives.push_back(SDFPrimitive::new(shape, transform, group_id));
     }
 
@@ -103,11 +110,18 @@ impl SDFPrimitivesList {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.primitives.clear()
+    }
+
     pub fn sort_by_group_id(&mut self) {
         self.primitives.sort_by(|prim0, prim1| { prim0.group_id.cmp(&prim1.group_id) });
     }
 
-    pub fn clear(&mut self) {
-        self.primitives.clear()
+    pub fn send_to_gpu(&self) -> Array<SDFPrimitiveGPU> {
+        self.primitives
+            .iter()
+            .map(|prim| -> SDFPrimitiveGPU { prim.into() })
+            .collect()
     }
 }

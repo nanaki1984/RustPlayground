@@ -18,26 +18,30 @@ pub mod cs_globalsdf {
         //dump: true,
     }
 }
-/*
-impl Into<cs_globalsdf::ty::SDFPrimitive> for SDFPrimitive {
-    fn into(self) -> cs_globalsdf::ty::SDFPrimitive {
-        let half_size_radius = match self.get_shape() {
+
+impl From<&SDFPrimitive> for cs_globalsdf::ty::SDFPrimitive {
+    fn from(value: &SDFPrimitive) -> Self {
+        let (half_size_radius, shape) = match value.get_shape() {
             SDFShape::Sphere { radius } => {
-                [radius, radius, radius, radius]
+                ([*radius, *radius, *radius, *radius], 0u32)
             },
             SDFShape::Box { half_size } => {
-                [half_size.x, half_size.y, half_size.z, 0.0]
+                ([half_size.x, half_size.y, half_size.z, 0.0], 1u32)
             },
             SDFShape::RoundedBox { half_size, radius } => {
-                [half_size.x, half_size.y, half_size.z, *radius]
+                ([half_size.x, half_size.y, half_size.z, *radius], 2u32)
             }
         };
-
-        cs_globalsdf::ty::SDFPrimitive {
+        
+        Self {
             half_size_radius,
-            inv_xform: [self.get_inv_xform().row(0), self.get_inv_xform.row(1), self.get_inv_xform().row(2)]
-        }        
+            inv_xform: *value.get_inv_xform().as_ref(),
+            distance_scaling_factor: value.get_dist_scaling_factor(),
+            shape,
+            group_id: value.get_group_id(),
+            _dummy0: Default::default()
+        }
     }
 }
-*/
+
 //mod sdfscene;
