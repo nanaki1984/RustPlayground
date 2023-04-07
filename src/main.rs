@@ -5,7 +5,7 @@ use bytemuck::{Pod, Zeroable};
 use egui::{epaint::Shadow, style::Margin, vec2, Align, Align2, Color32, Frame, Rounding, Window};
 use egui_winit_vulkano::{Gui, GuiConfig};
 use vulkano::{
-    buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
+    buffer::{Buffer, BufferUsage, BufferCreateInfo, Subbuffer},
     command_buffer::{
         allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder,
         CommandBufferInheritanceInfo, CommandBufferUsage, RenderPassBeginInfo, SubpassContents,
@@ -13,7 +13,7 @@ use vulkano::{
     device::{Device, Queue},
     format::Format,
     image::{ImageAccess, SampleCount},
-    memory::allocator::StandardMemoryAllocator,
+    memory::allocator::{AllocationCreateInfo, MemoryUsage, StandardMemoryAllocator},
     pipeline::{
         graphics::{
             input_assembly::InputAssemblyState,
@@ -40,7 +40,7 @@ use winit::{
 
 pub fn main() {
     // Init logger
-    egui_logger::init().unwrap();
+    //egui_logger::init().unwrap();
 
     // Winit event loop
     let event_loop = EventLoop::new();
@@ -146,11 +146,11 @@ pub fn main() {
                             ui.label("Hello world!");
                             ui.label("See https://github.com/emilk/egui for how to make other UI elements");
                         });
-                    Window::new("Log")
+                    /*Window::new("Log")
                         .show(&ctx, |ui| {
                             // draws the logger ui.
                             egui_logger::logger_ui(ui);
-                        });
+                        });*/
                 });
 
                 // Render
@@ -181,7 +181,7 @@ struct SimpleGuiPipeline {
     queue: Arc<Queue>,
     render_pass: Arc<RenderPass>,
     pipeline: Arc<GraphicsPipeline>,
-    vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
+    vertex_buffer: Subbuffer<[Vertex]>,
     command_buffer_allocator: StandardCommandBufferAllocator,
     minimized: bool,
 }
@@ -196,10 +196,10 @@ impl SimpleGuiPipeline {
         let pipeline = Self::create_pipeline(queue.device().clone(), render_pass.clone());
 
         let vertex_buffer = {
-            CpuAccessibleBuffer::from_iter(
+            Buffer::from_iter(
                 allocator,
-                BufferUsage { vertex_buffer: true, ..BufferUsage::empty() },
-                false,
+                BufferCreateInfo { usage: BufferUsage::VERTEX_BUFFER, ..Default::default() },
+                AllocationCreateInfo{ usage: MemoryUsage::Upload, ..Default::default() },
                 [
                     Vertex { position: [-0.5, -0.25], color: [1.0, 0.0, 0.0, 1.0] },
                     Vertex { position: [0.0, 0.5], color: [0.0, 1.0, 0.0, 1.0] },

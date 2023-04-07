@@ -210,7 +210,40 @@ impl<T, A, I> IndexMut<I> for Array<T, A> where
         IndexMut::index_mut(&mut **self, index)
     }
 }
+/*
+// TODO: into_iter() does not do what is expected! should consume the array
+impl<T, A> IntoIterator for Array<T, A> where
+    T: Unpin,
+    A: AllocatorBase
+{
+    type Item = T;
+    type IntoIter = IntoIter<T, A>;
 
+    // From std::Vec
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        unsafe {
+            let mut me = ManuallyDrop::new(self);
+            let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
+            let begin = me.as_mut_ptr();
+            let end = if T::IS_ZST {
+                begin.wrapping_byte_add(me.len())
+            } else {
+                begin.add(me.len()) as *const T
+            };
+            let cap = me.buf.capacity();
+            IntoIter {
+                buf: NonNull::new_unchecked(begin),
+                phantom: PhantomData,
+                cap,
+                alloc,
+                ptr: begin,
+                end,
+            }
+        }
+    }
+}
+*/
 impl<'a, T, A> IntoIterator for &'a Array<T, A> where
     T: Unpin,
     A: AllocatorBase
@@ -282,5 +315,3 @@ impl<T: Unpin> Default for Array<T>
         Array::new()
     }
 }
-
-// TODO: into_iter() does not do what is expected! should consume the array

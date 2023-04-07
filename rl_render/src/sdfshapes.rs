@@ -1,7 +1,7 @@
 use nalgebra_glm::{Vec3, Mat4x3, Mat4x4, inverse};
 use rl_core::Array;
 use rl_math::{AABB, VEC3_ZERO, VEC3_ONE, VEC3_HALF};
-use crate::cs_globalsdf::ty::SDFPrimitive as SDFPrimitiveGPU;
+use crate::cs_globalsdf::SDFPrimitive as SDFPrimitiveGPU;
 
 #[derive(Clone)]
 pub enum SDFShape {
@@ -118,7 +118,7 @@ impl SDFPrimitivesList {
         self.primitives.sort_by(|prim0, prim1| { prim0.group_id.cmp(&prim1.group_id) });
     }
 
-    pub fn send_to_gpu(&self) -> Array<SDFPrimitiveGPU> {
+    pub fn send_to_gpu(&self) -> Array<SDFPrimitiveGPU> { // Do not return an array, return an IntoIter that converts every SDFPrimitive in SDFPrimitiveGPU
         self.primitives
             .iter()
             .map(|prim| -> SDFPrimitiveGPU { prim.into() })

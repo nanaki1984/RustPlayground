@@ -1,7 +1,27 @@
+use std::sync::Arc;
+use std::mem::MaybeUninit;
 use nalgebra_glm::Vec3;
-use rl_core::InlineArray;
 use rl_math::{AABB, VEC3_ONE};
 use crate::SDFPrimitivesList;
+
+use vulkano::{
+    buffer::{Buffer, BufferUsage},
+    command_buffer::{
+        allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
+    },
+    descriptor_set::{
+        allocator::{StandardDescriptorSetAllocator, DescriptorSetAllocator}, PersistentDescriptorSet, WriteDescriptorSet,
+    },
+    device::{
+        physical::PhysicalDeviceType, Device, DeviceCreateInfo, DeviceExtensions, QueueCreateInfo,
+        QueueFlags,
+    },
+    instance::{Instance, InstanceCreateInfo},
+    memory::allocator::{AllocationCreateInfo, MemoryUsage, MemoryAllocator, StandardMemoryAllocator},
+    pipeline::{ComputePipeline, Pipeline, PipelineBindPoint},
+    sync::{self, GpuFuture},
+    VulkanLibrary,
+};
 
 const GLOBALSDF_CASCADE_SIZE: usize = 128;
 const GLOBALSDF_CHUNKS_PER_SIDE: usize = 4;
@@ -9,7 +29,7 @@ const GLOBALSDF_CHUNKS_PER_SIDE: usize = 4;
 const GLOBALSDF_CHUNK_SIZE: usize = GLOBALSDF_CASCADE_SIZE / GLOBALSDF_CHUNKS_PER_SIDE;
 const GLOBALSDF_CHUNKS_NUM: usize = GLOBALSDF_CHUNKS_PER_SIDE * GLOBALSDF_CHUNKS_PER_SIDE * GLOBALSDF_CHUNKS_PER_SIDE;
 
-const GLOBALSDF_MAX_DIST_VOXELS: usize = 4;
+pub(crate) const GLOBALSDF_MAX_DIST_VOXELS: i32 = 4;
 
 struct GlobalSDFChunk {
     aabb: AABB,
@@ -36,7 +56,9 @@ pub struct GlobalSDFCascade {
     voxel_size: f32,
     aabb: AABB,
     extended_aabb: AABB,
-    chunks: InlineArray<GlobalSDFChunk, GLOBALSDF_CHUNKS_NUM>,
+    chunks: [MaybeUninit<GlobalSDFChunk>; GLOBALSDF_CHUNKS_NUM],
+
+    //primitives_buffer: CpuAccessibleBuffer<[crate::cs_globalsdf::SDFPrimitive]>,
 }
 
 impl GlobalSDFCascade {
@@ -52,7 +74,9 @@ impl GlobalSDFCascade {
 
         let first_chunk_center = aabb.min + VEC3_ONE * half_chunk_size;
 
-        let mut chunks = InlineArray::<GlobalSDFChunk, GLOBALSDF_CHUNKS_NUM>::custom_allocator();
+        let mut chunks: [MaybeUninit<GlobalSDFChunk>; GLOBALSDF_CHUNKS_NUM] = unsafe {
+            MaybeUninit::uninit().assume_init()
+        };
         for i in 0..GLOBALSDF_CHUNKS_NUM {
             let chunk_x = i % GLOBALSDF_CHUNKS_PER_SIDE;
             let chunk_y = (i / GLOBALSDF_CHUNKS_PER_SIDE) % GLOBALSDF_CHUNKS_PER_SIDE;
@@ -63,7 +87,7 @@ impl GlobalSDFCascade {
                 , chunk_size * (chunk_y as f32)
                 , chunk_size * (chunk_z as f32));
 
-            chunks.push_back(GlobalSDFChunk::new(
+            chunks[i].write(GlobalSDFChunk::new(
                 &primitives,
                 voxel_size,
                 AABB::from_center_extents(&chunk_center, &chunk_extends)));
@@ -74,6 +98,36 @@ impl GlobalSDFCascade {
             aabb,
             extended_aabb,
             chunks,
+        }
+    }
+
+    pub fn compute_on_gpu<A>(
+        &self,
+        pipeline: Arc<ComputePipeline>,
+        buffer_allocator: &(impl MemoryAllocator + ?Sized),
+        set_allocator: &A)
+    where
+        A: DescriptorSetAllocator
+    {
+        for elem in &self.chunks[..] {
+            let chunk = unsafe{ elem.assume_init_ref() };
+            let prims = chunk.primitives.send_to_gpu();
+
+            //CpuAccessibleBuffer::uninitialized_array(allocator, usage, host_cached)
+            /*let data_buffer =
+                CpuAccessibleBuffer::from_data(buffer_allocator, BufferUsage {
+                    storage_buffer: true,
+                    ..Default::default()
+                }, false, prims.into_iter())
+                .unwrap();
+
+            let layout = pipeline.layout().set_layouts().get(0).unwrap();
+            let set = PersistentDescriptorSet::new(
+                set_allocator,
+                layout.clone(),
+                [WriteDescriptorSet::buffer(0, data_buffer.clone())],
+            )
+            .unwrap();*/
         }
     }
 }

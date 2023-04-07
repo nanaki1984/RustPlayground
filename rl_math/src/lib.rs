@@ -8,6 +8,8 @@ mod aabb;
 
 pub use aabb::AABB;
 
+// TODO: make a Transform struct with Vec3 Location Quaternion Rotation Vec3 Scale because using glm directly is unbearable
+
 pub fn transform_vec4(m: &Mat4x3, v: &Vec4) -> Vec3 {
     Vec3::new(m.column(0).dot(v), m.column(1).dot(v), m.column(2).dot(v))
 }
