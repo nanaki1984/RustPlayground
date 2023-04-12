@@ -2,10 +2,10 @@ use std::sync::Arc;
 use std::mem::MaybeUninit;
 use nalgebra_glm::Vec3;
 use rl_math::{AABB, VEC3_ONE};
-use crate::SDFPrimitivesList;
+use crate::{SDFPrimitivesList, cs_globalsdf};
 
 use vulkano::{
-    buffer::{Buffer, BufferUsage},
+    buffer::{Buffer, BufferUsage, BufferCreateInfo, BufferCreateFlags},
     command_buffer::{
         allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     },
@@ -57,8 +57,6 @@ pub struct GlobalSDFCascade {
     aabb: AABB,
     extended_aabb: AABB,
     chunks: [MaybeUninit<GlobalSDFChunk>; GLOBALSDF_CHUNKS_NUM],
-
-    //primitives_buffer: CpuAccessibleBuffer<[crate::cs_globalsdf::SDFPrimitive]>,
 }
 
 impl GlobalSDFCascade {
@@ -109,25 +107,46 @@ impl GlobalSDFCascade {
     where
         A: DescriptorSetAllocator
     {
+        // TODO: should use a BumpAllocator for allocating (buffer_allocator) the primitives buffers, release it when finished
         for elem in &self.chunks[..] {
             let chunk = unsafe{ elem.assume_init_ref() };
-            let prims = chunk.primitives.send_to_gpu();
+/*
+            let data_buffer =
+                Buffer::new_slice::<crate::cs_globalsdf::SDFPrimitive>(
+                    buffer_allocator,
+                    BufferCreateInfo{ usage: BufferUsage::STORAGE_BUFFER, ..Default::default() },
+                    AllocationCreateInfo{ usage: MemoryUsage::Upload, ..Default::default() },
+                    prims.len() as u64)
+                    .unwrap();
+*/
+            let primitives_buffer = Buffer::from_iter(
+                buffer_allocator,
+                BufferCreateInfo{ usage: BufferUsage::STORAGE_BUFFER, ..Default::default() },
+                AllocationCreateInfo{ usage: MemoryUsage::Upload, ..Default::default() },
+                chunk.primitives.send_to_gpu()
+            )
+            .unwrap();
 
-            //CpuAccessibleBuffer::uninitialized_array(allocator, usage, host_cached)
-            /*let data_buffer =
-                CpuAccessibleBuffer::from_data(buffer_allocator, BufferUsage {
-                    storage_buffer: true,
-                    ..Default::default()
-                }, false, prims.into_iter())
-                .unwrap();
+            let chunk_data_buffer = Buffer::from_data(
+                buffer_allocator,
+                BufferCreateInfo{ usage: BufferUsage::UNIFORM_BUFFER, ..Default::default() },
+                AllocationCreateInfo { usage: MemoryUsage::Upload, ..Default::default() },
+                cs_globalsdf::ChunkData {
+                    voxel_size: self.voxel_size.into(),
+                    aabb_min: *chunk.aabb.min.as_ref(),
+                    primitives_count: chunk.primitives.count()
+                }
+            )
+            .unwrap();
 
             let layout = pipeline.layout().set_layouts().get(0).unwrap();
             let set = PersistentDescriptorSet::new(
                 set_allocator,
                 layout.clone(),
-                [WriteDescriptorSet::buffer(0, data_buffer.clone())],
+                [ WriteDescriptorSet::buffer(0, primitives_buffer)
+                , WriteDescriptorSet::buffer(2, chunk_data_buffer)],
             )
-            .unwrap();*/
+            .unwrap();
         }
     }
 }

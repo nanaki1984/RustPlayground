@@ -1,3 +1,5 @@
+use core::iter::IntoIterator;
+use std::ops::Index;
 use nalgebra_glm::{Vec3, Mat4x3, Mat4x4, inverse};
 use rl_core::Array;
 use rl_math::{AABB, VEC3_ZERO, VEC3_ONE, VEC3_HALF};
@@ -88,6 +90,31 @@ impl SDFPrimitive {
     }
 }
 
+pub struct SendSDFPrimitivesToGPUIter<'a> {
+    list: &'a Array<SDFPrimitive>,
+    index: usize,
+}
+
+impl Iterator for SendSDFPrimitivesToGPUIter<'_> {
+    type Item = SDFPrimitiveGPU;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index == self.list.num() {
+            None
+        } else {
+            let prim = &self.list[self.index];
+            self.index += 1;
+            Some(prim.into())
+        }
+    }
+}
+
+impl ExactSizeIterator for SendSDFPrimitivesToGPUIter<'_> {
+    fn len(&self) -> usize {
+        self.list.num()
+    }
+}
+
 #[derive(Default)]
 pub struct SDFPrimitivesList {
     primitives: Array<SDFPrimitive>,
@@ -118,10 +145,11 @@ impl SDFPrimitivesList {
         self.primitives.sort_by(|prim0, prim1| { prim0.group_id.cmp(&prim1.group_id) });
     }
 
-    pub fn send_to_gpu(&self) -> Array<SDFPrimitiveGPU> { // Do not return an array, return an IntoIter that converts every SDFPrimitive in SDFPrimitiveGPU
-        self.primitives
-            .iter()
-            .map(|prim| -> SDFPrimitiveGPU { prim.into() })
-            .collect()
+    pub fn count(&self) -> u32 {
+        self.primitives.num() as u32
+    }
+
+    pub fn send_to_gpu(&self) -> SendSDFPrimitivesToGPUIter {
+        SendSDFPrimitivesToGPUIter { list: &self.primitives, index: 0 }
     }
 }
